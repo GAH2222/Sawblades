@@ -1,228 +1,169 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SAWBLADES (ONLINE)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-        
-        body { 
-            margin: 0; 
-            background-color: #111; 
-            overflow: hidden; 
-            font-family: 'Press Start 2P', cursive; 
-            color: #f8fafc; 
-            user-select: none; 
-            -webkit-user-select: none; 
-            cursor: default; 
+// --- DRAWING ---
+window.createParticles = function(x, y, color, count) { for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color }); }
+window.spawnBlade = function() { const size = 64; const x = Math.random() * (width - size); const dir = Math.random() > 0.5 ? 1 : -1; const rotSpeed = dir * (0.1 + Math.random() * 0.5); blades.push({ x, y: -size - 20, size, vx: (Math.random() - 0.5) * 12, vy: 7.5, rot: Math.random() * 6.28, rotSpeed: rotSpeed, tagged: false, trail: [] }); }
+window.handleJump = function() { if (player.grounded) { playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; } else if (jumpCount < 2) { playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; window.createParticles(player.x + 16, player.y + 16, '#fff', 5); } }
+
+window.drawBackground = function(ctx, width, height, tick) {
+const bg = BACKGROUNDS[saveData.settings.bg] || BACKGROUNDS['default'];
+if (bg.type === 'sunset') { const grd = ctx.createLinearGradient(0, 0, 0, height); grd.addColorStop(0, "#0f172a"); grd.addColorStop(0.5, "#4c1d95"); grd.addColorStop(1, "#be185d"); ctx.fillStyle = grd; } else { ctx.fillStyle = bg.color; }
+ctx.fillRect(0, 0, width, height);
+if (bg.type === 'stars' || bg.type === 'sunset') { stars.forEach(s => { s.blink++; if(Math.sin(s.blink * 0.1) > 0) { ctx.fillStyle = s.color; ctx.fillRect(s.x, s.y, s.size, s.size); } }); if (bg.type === 'sunset') { ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(width/2, height0.7, 100, 0, Math.PI2); ctx.fill(); for(let i=0; i<10; i++) { ctx.fillStyle = bg.color; ctx.fillRect(width/2 - 110, height0.7 - 50 + i15, 220, 5); } } }
+else if (bg.type === 'mezz') { const floorHeight = 100; for(let i=0; i<width; i+=40) { ctx.fillStyle = i%80===0 ? '#5d4037' : '#4e342e'; ctx.fillRect(i, height-floorHeight, 40, floorHeight); } ctx.fillStyle = '#000'; ctx.fillRect(0, height-floorHeight-20, width, 10); for(let i=0; i<width; i+=60) ctx.fillRect(i, height-floorHeight-20, 5, 20); const shelfY = height/2 - 100; ctx.fillStyle = '#261b16'; ctx.fillRect(50, shelfY, width-100, 150); ctx.fillStyle = '#3e2723'; ctx.fillRect(50, shelfY + 50, width-100, 10); ctx.fillRect(50, shelfY + 100, width-100, 10); }
+else if (bg.type === 'curry_court') { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(50, 50, width-100, height-100); ctx.beginPath(); ctx.moveTo(width/2, 50); ctx.lineTo(width/2, height-50); ctx.stroke(); ctx.beginPath(); ctx.arc(width/2, height/2, 50, 0, Math.PI2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = 'bold 100px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.3; ctx.fillText('DA', width/2, height/2); ctx.globalAlpha = 1.0; }
+else if (bg.type === 'jcsmp') { const blockSize = 40; for(let x=0; x<width; x+=blockSize) { const noise = Math.sin(x0.01 + tick*0.01) * 3; const h = height/2 + noise * blockSize; ctx.fillStyle = '#22c55e'; ctx.fillRect(x, h, blockSize, blockSize); ctx.fillStyle = '#78350f'; ctx.fillRect(x, h+blockSize, blockSize, height-h-blockSize); } }
+else if (bg.type === 'grid') { ctx.strokeStyle = '#d946ef'; ctx.lineWidth = 1; const offset = (tick * 2) % 40; for(let y = 0; y < height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y + offset); ctx.lineTo(width, y + offset); ctx.stroke(); } }
+};
+
+window.drawSkin = function(ctx, x, y, size, skinId, frame) {
+const skin = SKINS[skinId] || SKINS['default']; const s = size; ctx.save(); ctx.translate(x, y);
+if(skin.type === 'glitch') { ctx.fillStyle = hsl(${Math.random()*360}, 100%, 50%); ctx.fillRect(Math.random()4-2, Math.random()4-2, s, s); ctx.globalCompositeOperation = 'difference'; ctx.fillStyle = '#fff'; ctx.fillRect(0,0,s,s); ctx.restore(); return; }
+if(skin.type === 'solar') { ctx.shadowBlur = 10; ctx.shadowColor = '#f97316'; } if(skin.type === 'nebula') { ctx.shadowBlur = 10; ctx.shadowColor = '#d946ef'; }
+if(skin.type === 'matrix') { ctx.strokeStyle = '#0f0'; ctx.lineWidth = 1; ctx.strokeRect(0,0,s,s); }
+ctx.fillStyle = skin.color; ctx.fillRect(0, 0, s, s); ctx.shadowBlur = 0;
+if(skin.type === 'curry') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#166534'; ctx.font = '10px monospace'; ctx.fillText('22', 8, 20); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(28, 10); ctx.lineTo(36, -10); ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(36, -10, 4, 0, Math.PI2); ctx.stroke(); }
+else if(skin.type === 'wilks') { ctx.fillStyle = '#dcb28b'; ctx.fillRect(0,0,s,s); ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(4, 12, 10, 8); ctx.fillRect(18, 12, 10, 8); ctx.fillRect(10, 22, 12, 8); ctx.fillStyle = '#000'; ctx.fillRect(10,6,4,2); ctx.fillRect(18,6,4,2); ctx.fillRect(12,10,8,2); }
+else if(skin.type === 'plumbous') { ctx.save(); ctx.translate(4,4); ctx.scale(0.8, 0.8); ctx.fillStyle = '#fbbf24'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#000'; ctx.fillRect(4,6,6,6); ctx.fillRect(14,6,6,6); ctx.fillRect(24,6,4,6); ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(8, 28, 4, 0, Math.PI2); ctx.arc(24, 28, 4, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
+else if(skin.type === 'candella') { ctx.fillStyle = '#000'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#d4a373'; ctx.fillRect(4,4,24,24); ctx.fillStyle = '#000'; ctx.fillRect(0,0,32,8); ctx.fillRect(0,0,4,32); ctx.fillRect(28,0,4,32); ctx.fillStyle = '#000'; ctx.fillRect(8,12,4,4); ctx.fillRect(20,12,4,4); ctx.fillStyle = '#be123c'; ctx.fillRect(12,22,8,2); }
+else if(skin.type === 'talia') { ctx.save(); ctx.translate(-4,-4); ctx.scale(1.25, 1.25); ctx.fillStyle = '#3f2c22'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#a16207'; ctx.fillRect(6,8,20,20); ctx.fillStyle = '#000'; ctx.fillRect(10,14,4,4); ctx.fillRect(20,14,4,4); ctx.restore(); }
+else if(skin.type === 'thomas') { ctx.save(); ctx.translate(-4,-4); ctx.scale(1.25, 1.25); ctx.fillStyle = '#ffe0bd'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#fef08a'; ctx.fillRect(0,0,32,10); ctx.fillStyle = '#000'; ctx.fillRect(10,14,4,4); ctx.fillRect(20,14,4,4); ctx.restore(); }
+else if(skin.type === 'markian') { ctx.fillStyle = '#fff1f2'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#451a03'; ctx.fillRect(0,0,32,8); ctx.fillRect(2,6,4,4); ctx.fillRect(26,5,4,5); ctx.fillStyle = '#ef4444'; ctx.fillRect(6,12,2,2); ctx.fillRect(24,20,3,3); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(16, 22, 6, 0, Math.PI); ctx.stroke(); ctx.fillRect(8,12,4,4); ctx.fillRect(20,12,4,4); }
+else if(skin.type === 'husband') { ctx.fillStyle = '#573018'; ctx.fillRect(0,0,32,8); ctx.fillStyle = '#fca5a5'; ctx.fillRect(0,8,32,24); ctx.fillStyle = '#0021A5'; ctx.fillRect(0,20,32,12); ctx.fillStyle = '#FA4616'; ctx.fillRect(12,24,8,4); ctx.fillStyle = '#22c55e'; ctx.fillRect(14,25,4,2); ctx.fillStyle = '#000'; ctx.fillRect(8,14,4,4); ctx.fillRect(20,14,4,4); }
+else if(skin.type === 'walter') { ctx.fillStyle = '#1e40af'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#dc2626'; ctx.fillRect(0,10,32,4); ctx.fillStyle = '#fca5a5'; ctx.fillRect(4,4,24,20); ctx.fillStyle = '#9ca3af'; ctx.fillRect(4,4,24,4); ctx.fillStyle = '#000'; ctx.fillRect(8,12,2,2); ctx.fillRect(22,12,2,2); }
+else if(skin.type === 'nick') { ctx.fillStyle = '#fef08a'; ctx.fillRect(4,0,24,8); ctx.fillStyle = '#fca5a5'; ctx.fillRect(8,4,16,14); ctx.fillStyle = '#000'; ctx.fillRect(0,18,32,14); ctx.fillRect(0,8,8,10); ctx.fillRect(24,8,8,10); ctx.fillStyle = '#000'; ctx.fillRect(10,10,4,4); ctx.fillRect(18,10,4,4); }
+else if(skin.type === 'sam_kim') { ctx.fillStyle = '#a16207'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#000'; ctx.fillRect(0,0,32,6); ctx.fillStyle = '#fff'; ctx.fillRect(6, 20, 20, 8); ctx.fillRect(12, 28, 4, 4); ctx.fillRect(20, 28, 6, 10); ctx.fillStyle = '#000'; ctx.fillRect(8,12,4,4); ctx.fillRect(20,12,4,4); ctx.fillStyle = '#fff'; ctx.fillRect(26, 10, 8, 16); ctx.fillStyle = '#3b82f6'; ctx.fillRect(28, 14, 4, 4); }
+else if(skin.type === 'jcsmp_king') { ctx.fillStyle = '#573018'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#fca5a5'; ctx.fillRect(4,8,24,24); ctx.fillStyle = '#fbbf24'; ctx.fillRect(0,0,32,6); ctx.fillRect(0,-4,4,4); ctx.fillRect(14,-4,4,4); ctx.fillRect(28,-4,4,4); ctx.fillStyle = '#000'; ctx.fillRect(8,14,4,4); ctx.fillRect(20,14,4,4); ctx.fillStyle = '#ef4444'; ctx.fillRect(4,24,24,8); }
+else if(skin.type === 'dog') { ctx.fillStyle = '#a16207'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#fff'; ctx.fillRect(0,20,32,12); ctx.fillStyle = '#000'; ctx.fillRect(6,10,4,4); ctx.fillRect(22,10,4,4); ctx.fillRect(14,16,4,4); }
+else if(skin.type === 'basic') { ctx.fillStyle = '#573018'; ctx.fillRect(0,0,32,10); ctx.fillStyle = '#fca5a5'; ctx.fillRect(0,10,32,22); ctx.fillStyle = '#000'; ctx.fillRect(8,16,4,4); ctx.fillRect(20,16,4,4); }
+else if(skin.type === 'stripe_h') { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, s/3, s, s/3); }
+else { ctx.fillStyle = '#fff'; ctx.fillRect(4, 8, 8, 8); ctx.fillRect(20, 8, 8, 8); ctx.fillStyle = '#000'; ctx.fillRect(8, 10, 4, 4); ctx.fillRect(24, 10, 4, 4); }
+ctx.restore();
+};
+
+// --- MANAGERS ---
+window.updateMenuUI = function() {
+document.getElementById('menu-coins').innerText = saveData.economy.coins;
+renderRank('menu-rank-container', saveData.stats.highScore);
+renderPfp();
+document.getElementById('player-name-input').value = saveData.profile.name;
+document.getElementById('menu-rank-text').innerText = getRankData(saveData.stats.highScore).name;
+document.getElementById('hud-coins').innerText = saveData.economy.coins;
+document.getElementById('best-val').innerText = saveData.stats.highScore;
+document.getElementById('menu-gumball-btn').innerText = GUMBALL (${getGumballCost()}🟡);
+document.getElementById('gumball-btn').innerText = TURN xxxx (${getGumballCost()}🟡);
+document.getElementById('menu-wheel-btn').innerText = SPIN WHEEL (${getWheelCost()}🟡);
+document.getElementById('wheel-spin-btn').innerText = SPIN (${getWheelCost()}🟡);
+}
+
+window.showMainMenu = function() { currentState = GAME_STATE.MENU; document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('menu').classList.remove('hidden'); window.updateMenuUI(); };
+window.showSkins = function() { document.getElementById('menu').classList.add('hidden'); document.getElementById('skin-menu').classList.remove('hidden'); renderGrid('skin'); };
+window.showBackgrounds = function() { document.getElementById('menu').classList.add('hidden'); document.getElementById('bg-menu').classList.remove('hidden'); renderGrid('bg'); };
+window.showLeaderboard = function() { document.getElementById('leaderboard-modal').classList.remove('hidden'); window.fetchLeaderboardCloud(); };
+window.showChangelog = function() { document.getElementById('changelog-modal').classList.remove('hidden'); };
+window.showSettings = function() { document.getElementById('settings-modal').classList.remove('hidden'); };
+
+window.startGame = function() {
+playSound('click'); if (audioCtx.state === 'suspended') audioCtx.resume();
+currentState = GAME_STATE.PLAYING; score = 0; gameTime = 100; blades = []; items = []; particles = []; floatingTexts = []; spawnTimer = 0; spawnRate = 45; player.trail = []; player.x = width/2 - 16; player.y = groundY - 32; earnedCoins = 0;
+document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('ui-layer').classList.remove('hidden'); document.getElementById('time-container').classList.remove('hidden');
+window.updateMenuUI();
+}
+
+window.endGame = function() {
+playSound('gameover'); currentState = GAME_STATE.GAMEOVER;
+if (score > saveData.stats.highScore) { saveData.stats.highScore = score; window.submitScoreCloud(score); }
+const earned = Math.ceil(score * 0.5); saveData.economy.coins += earned; saveGame();
+document.getElementById('final-score').innerText = score; document.getElementById('earned-coins').innerText = earned; renderRank('game-over-rank', score); document.getElementById('game-over').classList.remove('hidden');
+}
+
+function renderGrid(type) {
+const isSkin = type === 'skin'; const grid = document.getElementById(isSkin ? 'skin-grid' : 'bg-grid'); grid.innerHTML = '';
+const allItems = Object.keys(isSkin ? SKINS : BACKGROUNDS); const unlocked = isSkin ? saveData.inventory.skins : saveData.inventory.bgs; const current = isSkin ? saveData.profile.skin : saveData.settings.bg;
+document.getElementById(isSkin ? 'skin-count' : 'bg-count').innerText = ${unlocked.length}/${allItems.length} UNLOCKED;
+const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythic', 'legendary'];
+allItems.sort((a,b) => rarityOrder.indexOf((isSkin ? SKINS[a] : BACKGROUNDS[a]).rarity) - rarityOrder.indexOf((isSkin ? SKINS[b] : BACKGROUNDS[b]).rarity));
+allItems.forEach(id => {
+const item = isSkin ? SKINS[id] : BACKGROUNDS[id];
+const c = document.createElement('canvas'); c.width=32; c.height=32; c.className = skin-item rarity-${item.rarity} ${current === id ? 'selected' : ''};
+if(!unlocked.includes(id)) c.classList.add('locked');
+else {
+const ctx = c.getContext('2d');
+if(isSkin) window.drawSkin(ctx, 0, 0, 32, id, 0); else { ctx.fillStyle = item.color; ctx.fillRect(0,0,32,32); }
+c.onclick = () => { playSound('click'); if(isSkin) saveData.profile.skin = id; else saveData.settings.bg = id; saveGame(); renderGrid(type); if(isSkin) { previewCtx.clearRect(0,0,32,32); window.drawSkin(previewCtx, 0, 0, 32, id, globalTick); } };
+c.title = item.name;
+}
+grid.appendChild(c);
+});
+}
+
+// --- LOOP ---
+window.loop = function() {
+requestAnimationFrame(window.loop);
+scheduleAudio();
+
+// CHANGED: We now unconditionally draw the dynamic background regardless of the current game state
+// This allows the menu and other states to display the active/selected background naturally.
+window.drawBackground(ctx, width, height, globalTick);
+
+if (currentState === GAME_STATE.GUMBALL) { window.updateAndDrawGumball(); return; }
+if (currentState === GAME_STATE.WHEEL) { window.updateAndDrawWheel(); return; }
+if (currentState === GAME_STATE.PLAYING) {
+    globalTick++; gameTime -= 0.07; if (gameTime <= 0) window.endGame(); document.getElementById('time-fill').style.width = Math.max(0, gameTime) + "%";
+    if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed; else if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed; else player.vx *= 0.75; 
+    player.vy += player.gravity; player.x += player.vx; player.y += player.vy;
+    const hue = (globalTick * 5) % 360; player.trail.unshift({x: player.x, y: player.y, a: player.angle, color: `hsl(${hue}, 80%, 60%)`}); if(player.trail.length > 8) player.trail.pop();
+    if (player.x < 0) player.x = 0; if (player.x > width - player.w) player.x = width - player.w;
+    if (player.y > groundY - player.h) {
+        player.y = groundY - player.h; player.vy = 0; player.grounded = true; jumpCount = 0;
+        let taggedIndices = []; for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) taggedIndices.push(i); }
+        if (taggedIndices.length > 0) {
+            let multiplier = taggedIndices.length > 1 ? 2 : 1; 
+            if (taggedIndices.length >= 4) { score *= 2; playSound('coin'); floatingTexts.push({text: "TOTAL SCORE x2!!!", x: width/2, y: height/2, color: '#ef4444', life: 2.0, vy: -1}); particles.push({x:0,y:0,w:width,h:height,life:0.5,type:'screen_flash', color:'rgba(255, 255, 255, 0.8)'}); } 
+            else if (taggedIndices.length > 1) { floatingTexts.push({text: taggedIndices.length + "x COMBO!", x: player.x, y: player.y-20, color: '#fbbf24', life: 1.0, vy: -1.5}); }
+            for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) { const b = blades[i]; window.createParticles(b.x + b.size/2, b.y + b.size/2, '#4ade80', 10); items.push({ x: b.x + b.size/2, y: b.y + b.size/2, vx: (Math.random()-0.5)*10, vy: -7, pulse: 0 }); blades.splice(i, 1); score += multiplier; } }
+            particles.push({x:0,y:groundY,w:width,h:5,life:0.5,type:'flash'});
         }
-        
-        canvas { 
-            display: block; 
-            image-rendering: pixelated; 
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 10;
-        }
+    }
+    spawnTimer++; if (spawnTimer > spawnRate) { window.spawnBlade(); spawnTimer = 0; spawnRate = Math.max(8, spawnRate - 0.08); }
+    for (let i = blades.length - 1; i >= 0; i--) {
+        let b = blades[i]; b.x += b.vx; b.y += b.vy; b.rot += b.rotSpeed; if (b.x < 0) { b.x = 0; b.vx *= -1; } if (b.x > width - b.size) { b.x = width - b.size; b.vx *= -1; } if (b.y > groundY - b.size) { b.y = groundY - b.size; b.vy *= -0.5; }
+        if (Math.hypot((player.x + 16) - (b.x + 32), (player.y + 16) - (b.y + 32)) < 36) { window.endGame(); return; }
+        if (!b.tagged && (player.y + 32) < b.y + 40 && Math.abs((player.x + 16) - (b.x + 32)) < 55) { b.tagged = true; window.createParticles(b.x + 32, b.y, '#4ade80', 8); }
+    }
+    items.forEach((it, idx) => {
+        it.x += it.vx; it.y += it.vy; it.vy += 0.4; it.pulse += 0.2; if (it.y > groundY - 10) { it.y = groundY - 10; it.vy *= -0.5; it.vx *= 0.6; if(Math.abs(it.vx)<0.1)it.vx=0; }
+        if (Math.hypot((player.x + 16) - it.x, (player.y + 16) - it.y) < 45) { playSound('coin'); gameTime = Math.min(100, gameTime + 15); items.splice(idx, 1); window.createParticles(it.x, it.y, '#fbbf24', 8); }
+    });
+    for(let i=particles.length-1; i>=0; i--) { let p = particles[i]; if(p.type === 'flash') p.life -= 0.1; else { p.x += p.vx; p.y += p.vy; p.life -= 0.03; } if (p.life <= 0) particles.splice(i, 1); }
+    for(let i=floatingTexts.length-1; i>=0; i--) { let ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.02; if (ft.life <= 0) floatingTexts.splice(i, 1); }
+}
+window.drawGame();
 
-        .scanlines { 
-            position: fixed; 
-            inset: 0; 
-            pointer-events: none; 
-            z-index: 50; 
-            opacity: 0.6; 
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); 
-            background-size: 100% 4px, 6px 100%; 
-        }
 
-        /* --- THE ONLY NEW ADDITION: MENU BACKGROUND --- */
-        .menu-bg {
-            background: radial-gradient(circle at center, #2e0814 0%, #111 60%);
-            background-size: 200% 200%;
-            animation: pulseMenu 6s ease-in-out infinite alternate;
-        }
-        
-        @keyframes pulseMenu {
-            0% { background-position: center; transform: scale(1); opacity: 0.95; }
-            100% { background-position: center; transform: scale(1.05); opacity: 1; }
-        }
+}
 
-        /* Basic UI overlays */
-        .overlay { 
-            position: absolute; 
-            inset: 0; 
-            z-index: 40; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            background: rgba(0, 0, 0, 0.7);
-        }
-        
-        .hidden { display: none !important; }
-        
-        button {
-            font-family: 'Press Start 2P', cursive;
-            transition: transform 0.1s, filter 0.1s;
-        }
-        button:active { transform: scale(0.95); }
-        button:hover { filter: brightness(1.2); }
-    </style>
-</head>
-<body>
+// --- 7. INITIALIZATION ---
+window.onload = function() {
+width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; groundY = height - 50;
+stars.length = 0; for(let i=0; i<50; i++) stars.push({x: Math.random()*width, y: Math.random()*height, size: Math.random()*2+1, color: rgba(255,255,255,${Math.random()}), blink: Math.random()*100});
 
-    <div class="scanlines"></div>
-    <canvas id="gameCanvas"></canvas>
+if(!saveData.inventory) saveData.inventory = { skins: ['default'], bgs: ['default'] };
+if(!saveData.economy) saveData.economy = { coins: 0, gumballCount: 0, wheelCount: 0 };
 
-    <!-- Main Menu Overlay with the new background -->
-    <div id="mainMenu" class="overlay menu-bg hidden">
-        <h1 class="text-4xl md:text-6xl text-red-600 mb-2 tracking-widest" style="text-shadow: 0 0 15px red;">SAWBLADES</h1>
-        <p class="text-gray-400 mb-10 text-xs tracking-widest">ONLINE EDITION</p>
-        
-        <button onclick="startGame()" class="bg-red-700 text-white px-8 py-4 mb-6 border-4 border-red-900 rounded shadow-[0_0_15px_rgba(255,0,0,0.5)] text-xl">
-            PLAY
-        </button>
-        
-        <div class="flex gap-4">
-            <button onclick="showSettings()" class="bg-gray-800 text-white px-4 py-2 border-2 border-gray-600 rounded text-xs">SETTINGS</button>
-            <button onclick="showLeaderboard()" class="bg-gray-800 text-white px-4 py-2 border-2 border-gray-600 rounded text-xs">LEADERBOARD</button>
-        </div>
-    </div>
+window.showMainMenu(); 
+loop();
 
-    <!-- UI Placeholder for HUD -->
-    <div id="hud" class="hidden absolute top-4 left-4 z-40 flex flex-col gap-2 pointer-events-none">
-        <div class="text-yellow-400 text-sm drop-shadow-md">COINS: <span id="coinDisplay">0</span></div>
-    </div>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        let width, height, groundY;
-        let stars = [];
-        let floatingTexts = [];
-        let gameState = 'boot'; 
-        
-        // Exact original save data structure
-        let saveData = { 
-            inventory: { skins: ['default'], bgs: ['default'] }, 
-            economy: { coins: 0, gumballCount: 0, wheelCount: 0 } 
-        };
+}
+window.addEventListener('resize', () => { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; groundY = height - 50; });
 
-        // --- GLOBAL FUNCTIONS ---
-        window.showMainMenu = function() {
-            gameState = 'menu';
-            document.getElementById('mainMenu').classList.remove('hidden');
-            document.getElementById('hud').classList.add('hidden');
-        };
-
-        window.startGame = function() {
-            gameState = 'game';
-            document.getElementById('mainMenu').classList.add('hidden');
-            document.getElementById('hud').classList.remove('hidden');
-            document.getElementById('coinDisplay').innerText = saveData.economy.coins;
-        };
-
-        window.showLeaderboard = function() { alert("Leaderboard placeholder - kept original"); };
-        window.showChangelog = function() { alert("Changelog placeholder - kept original"); };
-        window.showSettings = function() { alert("Settings placeholder - kept original"); };
-        window.wipeSave = function() { 
-            saveData = { inventory: { skins: ['default'], bgs: ['default'] }, economy: { coins: 0, gumballCount: 0, wheelCount: 0 } }; 
-            alert("Save wiped!"); 
-        };
-        window.devUnlock = function() { alert("Dev unlock triggered"); };
-        window.turnKnob = function() { alert("Gumball machine knob turned"); };
-
-        // --- DRAWING & LOGIC ---
-        window.drawGame = function() {
-            // Clear screen
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0, 0, width, height);
-
-            // Draw Stars
-            stars.forEach(s => {
-                ctx.fillStyle = s.color;
-                ctx.fillRect(s.x, s.y, s.size, s.size);
-                
-                if (gameState === 'game' || gameState === 'menu') {
-                    s.y += 0.2; // slow scroll
-                    if (s.y > height) {
-                        s.y = 0;
-                        s.x = Math.random() * width;
-                    }
-                }
-            });
-
-            // Draw Ground
-            ctx.fillStyle = '#0a0a0a';
-            ctx.fillRect(0, groundY, width, height - groundY);
-            ctx.fillStyle = '#ff0044'; // Top line of ground
-            ctx.fillRect(0, groundY, width, 4);
-
-            // Draw floating texts
-            for(let i = floatingTexts.length - 1; i >= 0; i--) {
-                let ft = floatingTexts[i];
-                ctx.globalAlpha = Math.max(0, ft.life);
-                ctx.fillStyle = ft.color || '#fff';
-                ctx.font = '10px "Press Start 2P"';
-                ctx.fillText(ft.text, ft.x, ft.y);
-                ctx.globalAlpha = 1.0;
-            }
-        };
-
-        function loop() {
-            if (gameState === 'game') {
-                // Game logic
-                for(let i = floatingTexts.length - 1; i >= 0; i--) {
-                    let ft = floatingTexts[i];
-                    ft.y -= 1;
-                    ft.life -= 0.02; 
-                    if (ft.life <= 0) floatingTexts.splice(i, 1); 
-                }
-            }
-            
-            window.drawGame();
-            requestAnimationFrame(loop);
-        }
-
-        // --- INITIALIZATION ---
-        window.onload = function() {
-            width = window.innerWidth; 
-            height = window.innerHeight; 
-            canvas.width = width; 
-            canvas.height = height; 
-            groundY = height - 50;
-            
-            stars.length = 0; 
-            for(let i=0; i<50; i++) {
-                stars.push({
-                    x: Math.random() * width, 
-                    y: Math.random() * height, 
-                    size: Math.random() * 2 + 1, 
-                    color: `rgba(255,255,255,${Math.random()})`, 
-                    blink: Math.random() * 100
-                });
-            }
-            
-            // Load logic exactly as requested
-            if(!saveData.inventory) saveData.inventory = { skins: ['default'], bgs: ['default'] };
-            if(!saveData.economy) saveData.economy = { coins: 0, gumballCount: 0, wheelCount: 0 };
-            
-            window.showMainMenu(); 
-            loop();
-        }
-
-        window.addEventListener('resize', () => { 
-            width = window.innerWidth; 
-            height = window.innerHeight; 
-            canvas.width = width; 
-            canvas.height = height; 
-            groundY = height - 50; 
-        });
-        
-    </script>
-</body>
-</html>
+// Attach globals to window
+window.showLeaderboard = showLeaderboard;
+window.showChangelog = showChangelog;
+window.showSettings = showSettings;
+window.wipeSave = wipeSave;
+// CHANGED: Removed window.devUnlock = devUnlock; to clear dev mode
+window.turnKnob = turnKnob;
+window.startGumball = startGumball;
+window.startWheel = startWheel;
+window.spinWheel = spinWheel;
+window.closePrize = closePrize;
