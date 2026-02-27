@@ -8,727 +8,548 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
-        body { 
-            margin: 0; 
-            background-color: #050505; 
-            overflow: hidden; 
-            font-family: 'Press Start 2P', cursive; 
-            color: #f8fafc; 
-            user-select: none; 
-            -webkit-user-select: none; 
-            cursor: default; 
-            touch-action: none;
-        }
+        body { margin: 0; background-color: #111; overflow: hidden; font-family: 'Press Start 2P', cursive; color: #f8fafc; user-select: none; -webkit-user-select: none; cursor: default; }
+        canvas { display: block; image-rendering: pixelated; }
+
+        .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: 0.6; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 6px 100%; }
+        .overlay { z-index: 10; }
+        .hidden { display: none !important; }
+        button { transition: transform 0.1s; }
+        button:active { transform: scale(0.95); }
         
-        canvas { 
-            display: block; 
-            image-rendering: pixelated; 
-        }
-
-        .scanlines { 
-            position: fixed; 
-            inset: 0; 
-            pointer-events: none; 
-            z-index: 50; 
-            opacity: 0.4; 
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); 
-            background-size: 100% 4px, 6px 100%; 
-        }
+        .skin-item { border: 2px solid transparent; cursor: pointer; transition: 0.2s; image-rendering: pixelated; }
+        .skin-item:hover:not(.locked) { transform: scale(1.1); }
+        .skin-item.selected { border-color: #4ade80; background-color: rgba(74, 222, 128, 0.2); }
+        .skin-item.locked { filter: grayscale(100%) brightness(0.3); cursor: not-allowed; }
         
-        .crt-flicker {
-            animation: flicker 0.15s infinite;
-            pointer-events: none;
-            position: fixed;
-            inset: 0;
-            z-index: 49;
-            background: rgba(255,255,255,0.01);
-        }
-
-        @keyframes flicker {
-            0% { opacity: 0.9; }
-            50% { opacity: 1; }
-            100% { opacity: 0.95; }
-        }
-
-        /* Custom UI buttons */
-        .pixel-btn {
-            background-color: #1a1a2e;
-            border: 4px solid #4a4e69;
-            color: #fff;
-            padding: 12px 24px;
-            text-transform: uppercase;
-            transition: all 0.1s;
-            box-shadow: 4px 4px 0px #000;
-        }
-        .pixel-btn:hover {
-            background-color: #e63946;
-            border-color: #f1faee;
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0px #000;
-        }
-        .pixel-btn:active {
-            transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0px #000;
-        }
-
-        .text-shadow { text-shadow: 4px 4px 0px #000; }
-        .text-glow { text-shadow: 0 0 10px rgba(230, 57, 70, 0.8), 0 0 20px rgba(230, 57, 70, 0.4); }
+        .rarity-common { box-shadow: inset 0 0 10px #334155; }
+        .rarity-uncommon { box-shadow: inset 0 0 10px #16a34a; }
+        .rarity-rare { box-shadow: inset 0 0 10px #2563eb; }
+        .rarity-epic { box-shadow: inset 0 0 10px #9333ea; }
+        .rarity-legendary { box-shadow: inset 0 0 15px #f59e0b; }
+        .rarity-mythic { box-shadow: inset 0 0 20px #ef4444; }
+        
+        input { outline: none; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
     <div class="scanlines"></div>
-    <div class="crt-flicker"></div>
+    <canvas id="game-canvas"></canvas>
 
-    <!-- UI Overlay Layer -->
-    <div id="ui-layer" class="absolute inset-0 pointer-events-none z-40 flex flex-col items-center justify-center">
+    <!-- UI: MAIN MENU -->
+    <div id="menu" class="overlay absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80">
+        <h1 class="text-4xl md:text-6xl text-white mb-2 tracking-widest text-center" style="text-shadow: 4px 4px 0px #ef4444;">SAWBLADES</h1>
+        <div id="menu-rank-container" class="text-2xl mt-2 mb-2"></div>
+        <div id="menu-rank-text" class="text-sm text-yellow-400 mb-4"></div>
+        <div class="flex gap-4 items-center">
+            <span class="text-gray-400">Name:</span>
+            <input id="player-name-input" class="bg-gray-800 border-2 border-gray-600 text-white p-2 w-48 text-center font-['Press_Start_2P'] uppercase text-sm" value="Player" maxlength="10" />
+        </div>
+        <div class="text-yellow-400 text-xl mt-4">Coins: <span id="menu-coins">0</span> 🟡</div>
+        <div class="text-gray-300 text-sm mb-4">Best: <span id="best-val">0</span></div>
         
-        <!-- Main Menu -->
-        <div id="main-menu" class="pointer-events-auto flex flex-col items-center gap-6 p-8 bg-black/60 border-4 border-gray-800 backdrop-blur-sm hidden">
-            <h1 class="text-4xl md:text-6xl text-white mb-2 text-glow text-center">SAWBLADES</h1>
-            <p class="text-gray-400 text-xs md:text-sm mb-8 animate-pulse">PRESS SPACE OR TAP TO JUMP</p>
-            
-            <button onclick="startGame()" class="pixel-btn text-xl w-full">PLAY</button>
-            <div class="flex gap-4 w-full">
-                <button onclick="showShop()" class="pixel-btn text-sm flex-1">SHOP</button>
-                <button onclick="showLeaderboard()" class="pixel-btn text-sm flex-1">STATS</button>
-            </div>
-            <button onclick="showSettings()" class="pixel-btn text-sm w-full mt-2">SETTINGS</button>
-        </div>
-
-        <!-- Shop Menu -->
-        <div id="shop-menu" class="pointer-events-auto flex flex-col items-center gap-6 p-8 bg-black/90 border-4 border-[#e63946] hidden max-w-lg w-full">
-            <h2 class="text-2xl text-[#e63946] text-shadow">GUMBALL MACHINE</h2>
-            <div class="flex items-center gap-4 text-yellow-400 text-shadow">
-                <span>COINS:</span>
-                <span id="shop-coins">0</span>
-            </div>
-            
-            <div class="bg-gray-900 border-2 border-gray-700 p-6 rounded text-center w-full my-4">
-                <div class="text-4xl mb-4" id="gumball-display">❓</div>
-                <p class="text-xs text-gray-400 leading-relaxed mb-4">Spend 100 coins to roll for a random skin!</p>
-                <button onclick="rollGumball()" class="pixel-btn text-sm w-full bg-yellow-600 border-yellow-400 hover:bg-yellow-500 text-black">ROLL (100 <span class="text-yellow-200">©</span>)</button>
-            </div>
-
-            <div class="w-full">
-                <h3 class="text-sm text-gray-300 mb-2">YOUR SKINS:</h3>
-                <div id="inventory-list" class="flex flex-wrap gap-2 text-xs text-gray-500">
-                    <!-- Populated via JS -->
-                </div>
-            </div>
-
-            <button onclick="showMainMenu()" class="pixel-btn text-sm w-full mt-4">BACK</button>
-        </div>
-
-        <!-- Death Screen -->
-        <div id="death-menu" class="pointer-events-auto flex flex-col items-center gap-6 p-8 bg-red-950/80 border-4 border-red-600 hidden">
-            <h2 class="text-4xl text-red-500 text-shadow animate-bounce">WASTED</h2>
-            
-            <div class="flex flex-col items-center gap-2 text-shadow my-4">
-                <div class="text-white">SCORE: <span id="death-score" class="text-blue-400">0</span></div>
-                <div class="text-white">COINS EARNED: <span id="death-coins" class="text-yellow-400">0</span></div>
-                <div class="text-gray-400 text-xs mt-2">HIGH SCORE: <span id="death-high">0</span></div>
-            </div>
-
-            <div class="flex gap-4 w-full">
-                <button onclick="startGame()" class="pixel-btn text-sm flex-1">RETRY</button>
-                <button onclick="showMainMenu()" class="pixel-btn text-sm flex-1">MENU</button>
-            </div>
-        </div>
+        <button onclick="startGame()" class="bg-green-500 hover:bg-green-400 text-white py-4 px-12 border-b-4 border-green-700 rounded text-2xl mt-2 mb-4">PLAY</button>
         
-        <!-- HUD (Always on when playing) -->
-        <div id="hud" class="absolute top-4 left-4 right-4 flex justify-between hidden">
-            <div class="text-white text-shadow text-sm md:text-xl">SCORE: <span id="hud-score">0</span></div>
-            <div class="text-yellow-400 text-shadow text-sm md:text-xl">COINS: <span id="hud-coins">0</span></div>
+        <div class="flex flex-wrap justify-center gap-4 mt-2 max-w-lg">
+            <button onclick="showSkins()" class="bg-blue-600 hover:bg-blue-500 border-b-4 border-blue-800 p-3 rounded text-sm">SKINS</button>
+            <button onclick="showBackgrounds()" class="bg-purple-600 hover:bg-purple-500 border-b-4 border-purple-800 p-3 rounded text-sm">STAGES</button>
+            <button onclick="startGumball()" id="menu-gumball-btn" class="bg-pink-600 hover:bg-pink-500 border-b-4 border-pink-800 p-3 rounded text-sm">GUMBALL</button>
+            <button onclick="startWheel()" id="menu-wheel-btn" class="bg-orange-600 hover:bg-orange-500 border-b-4 border-orange-800 p-3 rounded text-sm">WHEEL</button>
+        </div>
+
+        <div class="absolute bottom-4 flex gap-6 text-xs text-gray-500">
+            <button onclick="showLeaderboard()" class="hover:text-white">LEADERBOARD</button>
+            <button onclick="showSettings()" class="hover:text-white">SETTINGS</button>
+            <button onclick="showChangelog()" class="hover:text-white">CHANGELOG</button>
         </div>
     </div>
 
+    <!-- UI: HUD (IN-GAME) -->
+    <div id="ui-layer" class="overlay hidden absolute inset-0 pointer-events-none">
+        <div class="absolute top-6 left-6 text-white text-xl md:text-2xl" style="text-shadow: 2px 2px 0 #000;">SCORE: <span id="hud-score">0</span></div>
+        <div class="absolute top-6 right-6 text-yellow-400 text-xl md:text-2xl" style="text-shadow: 2px 2px 0 #000;">🟡 <span id="hud-coins">0</span></div>
+        <div id="time-container" class="absolute top-16 left-1/2 -translate-x-1/2 w-3/4 max-w-md h-4 bg-gray-900 border-2 border-white rounded overflow-hidden">
+            <div id="time-fill" class="h-full bg-green-500 w-full transition-all duration-75"></div>
+        </div>
+        <div class="absolute bottom-6 w-full text-center text-gray-400/50 text-xs">A/D to move, W/SPACE/TAP to jump</div>
+    </div>
+
+    <!-- UI: GAME OVER -->
+    <div id="game-over" class="overlay hidden absolute inset-0 flex flex-col items-center justify-center gap-6 bg-black/95">
+        <h2 class="text-4xl md:text-5xl text-red-500 tracking-widest" style="text-shadow: 3px 3px 0px #7f1d1d;">GAME OVER</h2>
+        <div id="game-over-rank" class="text-3xl mt-4"></div>
+        <div class="text-2xl text-white">SCORE: <span id="final-score">0</span></div>
+        <div class="text-xl text-yellow-400">EARNED: +<span id="earned-coins">0</span> 🟡</div>
+        <button onclick="showMainMenu()" class="mt-8 bg-white hover:bg-gray-200 text-black border-b-4 border-gray-400 py-3 px-8 rounded text-xl">MAIN MENU</button>
+    </div>
+
+    <!-- UI: SKINS MENU -->
+    <div id="skin-menu" class="overlay hidden absolute inset-0 bg-black/95 flex flex-col items-center py-10 overflow-y-auto">
+        <h2 class="text-3xl text-blue-400 mb-2">SKINS</h2>
+        <canvas id="skin-preview" width="64" height="64" class="w-16 h-16 mb-2"></canvas>
+        <div id="skin-count" class="text-gray-400 mb-6 text-sm"></div>
+        <div id="skin-grid" class="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 bg-gray-900 p-6 rounded-lg border-2 border-gray-700"></div>
+        <button onclick="showMainMenu()" class="mt-8 bg-red-600 hover:bg-red-500 border-b-4 border-red-800 text-white py-3 px-8 rounded">BACK</button>
+    </div>
+
+    <!-- UI: BACKGROUNDS MENU -->
+    <div id="bg-menu" class="overlay hidden absolute inset-0 bg-black/95 flex flex-col items-center py-10 overflow-y-auto">
+        <h2 class="text-3xl text-purple-400 mb-2">STAGES</h2>
+        <div id="bg-count" class="text-gray-400 mb-6 text-sm"></div>
+        <div id="bg-grid" class="grid grid-cols-3 md:grid-cols-4 gap-4 bg-gray-900 p-6 rounded-lg border-2 border-gray-700"></div>
+        <button onclick="showMainMenu()" class="mt-8 bg-red-600 hover:bg-red-500 border-b-4 border-red-800 text-white py-3 px-8 rounded">BACK</button>
+    </div>
+
+    <!-- UI: GUMBALL / WHEEL -->
+    <div id="gumball-menu" class="overlay hidden absolute inset-0 flex flex-col items-center justify-end pb-24 pointer-events-none">
+        <button id="gumball-btn" onclick="turnKnob()" class="pointer-events-auto bg-pink-500 hover:bg-pink-400 border-b-4 border-pink-700 text-white py-4 px-8 rounded text-xl mb-4">TURN KNOB</button>
+        <button onclick="showMainMenu()" class="pointer-events-auto bg-gray-600 hover:bg-gray-500 border-b-4 border-gray-800 text-white py-2 px-8 rounded">BACK</button>
+    </div>
+    <div id="wheel-menu" class="overlay hidden absolute inset-0 flex flex-col items-center justify-end pb-24 pointer-events-none">
+        <button id="wheel-spin-btn" onclick="spinWheel()" class="pointer-events-auto bg-orange-500 hover:bg-orange-400 border-b-4 border-orange-700 text-white py-4 px-8 rounded text-xl mb-4">SPIN</button>
+        <button onclick="showMainMenu()" class="pointer-events-auto bg-gray-600 hover:bg-gray-500 border-b-4 border-gray-800 text-white py-2 px-8 rounded">BACK</button>
+    </div>
+
+    <!-- UI: MODALS -->
+    <div id="leaderboard-modal" class="overlay hidden absolute inset-0 bg-black/95 flex flex-col items-center justify-center">
+        <h2 class="text-2xl text-blue-400 mb-6">GLOBAL LEADERBOARD</h2>
+        <div class="text-gray-400 border-2 border-gray-700 p-8 rounded bg-gray-900">Cloud Services Offline</div>
+        <button onclick="document.getElementById('leaderboard-modal').classList.add('hidden')" class="mt-8 bg-gray-700 px-6 py-2 border-b-4 border-gray-900 rounded text-white">CLOSE</button>
+    </div>
+    <div id="settings-modal" class="overlay hidden absolute inset-0 bg-black/95 flex flex-col items-center justify-center gap-4">
+        <h2 class="text-2xl text-gray-200 mb-6">SETTINGS</h2>
+        <button onclick="wipeSave()" class="bg-red-700 px-6 py-3 rounded text-white border-b-4 border-red-900">WIPE SAVE DATA</button>
+        <button onclick="devUnlock()" class="bg-purple-700 px-6 py-3 rounded text-white border-b-4 border-purple-900">DEV: UNLOCK ALL</button>
+        <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="mt-8 bg-gray-700 px-6 py-2 border-b-4 border-gray-900 rounded text-white">CLOSE</button>
+    </div>
+    <div id="changelog-modal" class="overlay hidden absolute inset-0 bg-black/95 flex flex-col items-center justify-center p-4">
+        <h2 class="text-2xl text-green-400 mb-6">CHANGELOG</h2>
+        <div class="text-gray-300 text-sm max-w-md bg-gray-900 p-6 rounded border-2 border-gray-700 leading-loose text-left">
+            <span class="text-green-500">v1.0.0</span><br>
+            - Implemented Sawblade physics.<br>
+            - Added dynamic Skin & Stage systems.<br>
+            - Gumball Machine & Prize Wheel active.<br>
+            - Polished Particle & Trail systems.
+        </div>
+        <button onclick="document.getElementById('changelog-modal').classList.add('hidden')" class="mt-8 bg-gray-700 px-6 py-2 border-b-4 border-gray-900 rounded text-white">CLOSE</button>
+    </div>
+
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // ==========================================
+        // PART 1: GAME ENGINE & MOCKS SETUP
+        // ==========================================
+        const GAME_STATE = { MENU: 0, PLAYING: 1, GAMEOVER: 2, GUMBALL: 3, WHEEL: 4 };
+        let currentState = GAME_STATE.MENU;
+        let canvas, ctx, previewCtx, width, height, groundY;
+        let globalTick = 0, gameTime = 100, score = 0, earnedCoins = 0;
+        let spawnTimer = 0, spawnRate = 45;
+        let particles = [], blades = [], items = [], floatingTexts = [], stars = [];
+        let jumpCount = 0;
+        let keys = {};
         
-        // Game Constants & Variables
-        let width, height, groundY;
-        let gameState = 'menu'; // menu, playing, dead, shop
-        let frameCount = 0;
-        let score = 0;
-        let sessionCoins = 0;
-        let difficultyMultiplier = 1;
+        // Mock Player Object
+        let player = { x: 0, y: 0, w: 32, h: 32, vx: 0, vy: 0, speed: 6.5, jump: -13.5, gravity: 0.65, grounded: false, angle: 0, trail: [] };
         
-        // Save Data handling
-        let saveData = {
-            inventory: { skins: ['default', 'blue', 'green'], activeSkin: 'default', bgs: ['default'] },
-            economy: { coins: 0, gumballCount: 0, wheelCount: 0 },
-            stats: { highScore: 0, totalDeaths: 0 }
-        };
+        // Audio Engine (Web Audio API Synthesizer)
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (!audioCtx || audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+            
+            if (type === 'jump') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc.start(); osc.stop(now + 0.15);
+            } else if (type === 'coin') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.setValueAtTime(1200, now + 0.05);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc.start(); osc.stop(now + 0.1);
+            } else if (type === 'click') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(); osc.stop(now + 0.05);
+            } else if (type === 'gameover') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.5);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                osc.start(); osc.stop(now + 0.5);
+            }
+        }
+        function scheduleAudio() {} // Empty stub to fulfill user script requirements
+
+        // Core Systems Data Setup
+        let saveData = { profile: {name: 'Player', skin: 'default'}, stats: {highScore: 0}, economy: {coins: 0, gumballCount: 0, wheelCount: 0}, inventory: {skins: ['default'], bgs: ['default']}, settings: {bg: 'default'} };
 
         const SKINS = {
-            'default': '#f8fafc',
-            'blue': '#3b82f6',
-            'green': '#10b981',
-            'gold': '#fbbf24',
-            'neon': '#f472b6',
-            'glitch': '#a855f7'
+            'default': { name: 'Default', rarity: 'common', color: '#fff' },
+            'basic': { name: 'Basic', rarity: 'common', type: 'basic' },
+            'stripe_h': { name: 'Stripe', rarity: 'common', type: 'stripe_h', color: '#eab308' },
+            'dog': { name: 'Dog', rarity: 'uncommon', type: 'dog' },
+            'talia': { name: 'Talia', rarity: 'uncommon', type: 'talia' },
+            'walter': { name: 'Walter', rarity: 'rare', type: 'walter' },
+            'nick': { name: 'Nick', rarity: 'rare', type: 'nick' },
+            'thomas': { name: 'Thomas', rarity: 'rare', type: 'thomas' },
+            'matrix': { name: 'Matrix', rarity: 'rare', type: 'matrix', color: '#000' },
+            'wilks': { name: 'Wilks', rarity: 'rare', type: 'wilks' },
+            'solar': { name: 'Solar', rarity: 'epic', type: 'solar', color: '#f97316' },
+            'nebula': { name: 'Nebula', rarity: 'epic', type: 'nebula', color: '#d946ef' },
+            'candella': { name: 'Candella', rarity: 'epic', type: 'candella' },
+            'markian': { name: 'Markian', rarity: 'epic', type: 'markian' },
+            'husband': { name: 'Husband', rarity: 'epic', type: 'husband' },
+            'curry': { name: 'Curry', rarity: 'legendary', type: 'curry' },
+            'sam_kim': { name: 'Sam Kim', rarity: 'legendary', type: 'sam_kim' },
+            'jcsmp_king': { name: 'JCSMP King', rarity: 'legendary', type: 'jcsmp_king' },
+            'glitch': { name: 'Glitch', rarity: 'mythic', type: 'glitch' },
+            'plumbous': { name: 'Plumbous', rarity: 'mythic', type: 'plumbous' }
         };
-        const ALL_SKIN_KEYS = Object.keys(SKINS);
 
-        function loadData() {
-            const saved = localStorage.getItem('sawblades_save');
-            if(saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    // Merge to ensure no missing keys if schema updates
-                    saveData.inventory = { ...saveData.inventory, ...parsed.inventory };
-                    saveData.economy = { ...saveData.economy, ...parsed.economy };
-                    saveData.stats = { ...saveData.stats, ...parsed.stats };
-                } catch(e) { console.error("Save corrupted, using defaults"); }
+        const BACKGROUNDS = {
+            'default': { name: 'Dark Void', rarity: 'common', color: '#111' },
+            'stars': { name: 'Starfield', rarity: 'uncommon', type: 'stars', color: '#050510' },
+            'mezz': { name: 'The Mezz', rarity: 'rare', type: 'mezz' },
+            'sunset': { name: 'Synth Sunset', rarity: 'epic', type: 'sunset' },
+            'grid': { name: 'Neon Grid', rarity: 'epic', type: 'grid' },
+            'curry_court': { name: 'Curry Court', rarity: 'legendary', type: 'curry_court' },
+            'jcsmp': { name: 'JCSMP World', rarity: 'mythic', type: 'jcsmp' }
+        };
+
+        // Engine Support Functions
+        function saveGame() { localStorage.setItem('sawblades_save', JSON.stringify(saveData)); }
+        function loadGame() {
+            try { const saved = localStorage.getItem('sawblades_save'); if (saved) saveData = { ...saveData, ...JSON.parse(saved) }; } catch(e) {}
+            let nameInput = document.getElementById('player-name-input');
+            if (nameInput) {
+                nameInput.value = saveData.profile.name;
+                nameInput.addEventListener('change', (e) => { saveData.profile.name = e.target.value; saveGame(); });
             }
         }
-        function saveGame() {
-            localStorage.setItem('sawblades_save', JSON.stringify(saveData));
+        function getRankData(score) {
+            if (score >= 1000) return { name: 'GRANDMASTER', color: '#fbbf24' };
+            if (score >= 500) return { name: 'MASTER', color: '#f87171' };
+            if (score >= 200) return { name: 'DIAMOND', color: '#60a5fa' };
+            if (score >= 100) return { name: 'PLATINUM', color: '#34d399' };
+            if (score >= 50) return { name: 'GOLD', color: '#facc15' };
+            if (score >= 20) return { name: 'SILVER', color: '#94a3b8' };
+            return { name: 'BRONZE', color: '#b45309' };
         }
-
-        // DOM Elements
-        const elMainMenu = document.getElementById('main-menu');
-        const elShopMenu = document.getElementById('shop-menu');
-        const elDeathMenu = document.getElementById('death-menu');
-        const elHud = document.getElementById('hud');
-
-        // Entities
-        let player = {
-            x: 100, y: 0, size: 30,
-            vy: 0, gravity: 0.6, jumpPower: -12,
-            isGrounded: false, color: '#fff'
-        };
-
-        let sawblades = [];
-        let coins = [];
-        let particles = [];
-        let floatingTexts = [];
+        function renderRank(elementId, score) {
+            let el = document.getElementById(elementId);
+            if (el) { let r = getRankData(score); el.innerHTML = `<span style="color: ${r.color};">${r.name}</span>`; }
+        }
+        function renderPfp() {}
+        function getGumballCost() { return 100 + (saveData.economy.gumballCount * 50); }
+        function getWheelCost() { return 250 + (saveData.economy.wheelCount * 100); }
+        function fetchLeaderboardCloud() {}
+        function submitScoreCloud(score) {}
+        function wipeSave() { if(confirm('Are you sure you want to wipe all progress?')) { localStorage.removeItem('sawblades_save'); location.reload(); } }
+        function devUnlock() { saveData.inventory.skins = Object.keys(SKINS); saveData.inventory.bgs = Object.keys(BACKGROUNDS); saveData.economy.coins += 10000; saveGame(); document.getElementById('settings-modal').classList.add('hidden'); showMainMenu(); }
         
-        // Background aesthetics
-        let stars = [];
-        let menuPhantomBlades = []; // Cool background movement for menu
-        let gridOffset = 0;
+        function turnKnob() {
+            let cost = getGumballCost();
+            if (saveData.economy.coins >= cost) {
+                let locked = Object.keys(SKINS).filter(s => !saveData.inventory.skins.includes(s));
+                if (locked.length > 0) {
+                    saveData.economy.coins -= cost; saveData.economy.gumballCount++; playSound('coin');
+                    let unlocked = locked[Math.floor(Math.random() * locked.length)];
+                    saveData.inventory.skins.push(unlocked); saveGame(); window.updateMenuUI();
+                    alert(`Gumball popped! You unlocked the [${SKINS[unlocked].name}] skin!`);
+                } else alert("You already have all the skins!");
+            } else { playSound('gameover'); alert("Not enough coins!"); }
+        }
+        function startGumball() { currentState = GAME_STATE.GUMBALL; document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('gumball-menu').classList.remove('hidden'); window.updateMenuUI(); }
+        function startWheel() { currentState = GAME_STATE.WHEEL; document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('wheel-menu').classList.remove('hidden'); window.updateMenuUI(); }
+        function spinWheel() {
+            let cost = getWheelCost();
+            if (saveData.economy.coins >= cost) {
+                let locked = Object.keys(BACKGROUNDS).filter(b => !saveData.inventory.bgs.includes(b));
+                if (locked.length > 0) {
+                    saveData.economy.coins -= cost; saveData.economy.wheelCount++; playSound('coin');
+                    let unlocked = locked[Math.floor(Math.random() * locked.length)];
+                    saveData.inventory.bgs.push(unlocked); saveGame(); window.updateMenuUI();
+                    alert(`Wheel spun! You unlocked the [${BACKGROUNDS[unlocked].name}] stage!`);
+                } else alert("You already have all the stages!");
+            } else { playSound('gameover'); alert("Not enough coins!"); }
+        }
+        function closePrize() {}
 
-        // --- CORE ENGINE ---
+        // Input Setup
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys['ArrowLeft'] = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys['ArrowRight'] = true;
+            if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') if (currentState === GAME_STATE.PLAYING) handleJump();
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys['ArrowLeft'] = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys['ArrowRight'] = false;
+        });
+        
+        let touchStartX = 0;
+        window.addEventListener('touchstart', (e) => { if (e.touches.length > 0) { touchStartX = e.touches[0].clientX; if (currentState === GAME_STATE.PLAYING) handleJump(); } });
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0 && currentState === GAME_STATE.PLAYING) {
+                let touchX = e.touches[0].clientX;
+                if (touchX < touchStartX - 30) { keys['ArrowLeft'] = true; keys['ArrowRight'] = false; }
+                else if (touchX > touchStartX + 30) { keys['ArrowRight'] = true; keys['ArrowLeft'] = false; }
+                else { keys['ArrowLeft'] = false; keys['ArrowRight'] = false; }
+            }
+        });
+        window.addEventListener('touchend', (e) => { keys['ArrowLeft'] = false; keys['ArrowRight'] = false; });
 
-        function resize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
-            groundY = height - Math.max(50, height * 0.1);
-            
-            // Re-init background arrays for new size
-            initBackground();
+        // Core Rendering Engines
+        window.drawGame = function() {
+            player.trail.forEach((tr, i) => {
+                ctx.save(); ctx.globalAlpha = 1 - (i / player.trail.length);
+                window.drawSkin(ctx, tr.x, tr.y, player.w, saveData.profile.skin, globalTick - i);
+                ctx.restore();
+            });
+            window.drawSkin(ctx, player.x, player.y, player.w, saveData.profile.skin, globalTick);
+
+            blades.forEach(b => {
+                ctx.save(); ctx.translate(b.x + b.size/2, b.y + b.size/2); ctx.rotate(b.rot);
+                ctx.fillStyle = b.tagged ? '#4ade80' : '#cbd5e1';
+                ctx.beginPath(); ctx.arc(0, 0, b.size/2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = b.tagged ? '#22c55e' : '#94a3b8';
+                for(let i=0; i<8; i++) {
+                    ctx.rotate(Math.PI/4); ctx.beginPath(); ctx.moveTo(b.size/2 - 4, -5); ctx.lineTo(b.size/2 + 8, 0); ctx.lineTo(b.size/2 - 4, 5); ctx.fill();
+                }
+                ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(0, 0, b.size/6, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            });
+
+            items.forEach(it => {
+                ctx.save(); ctx.translate(it.x, it.y); ctx.fillStyle = '#f59e0b';
+                ctx.beginPath(); ctx.arc(0, 0, 10 + Math.sin(it.pulse)*2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(0, 0, 7 + Math.sin(it.pulse)*2, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '10px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('c', 0, 1);
+                ctx.restore();
+            });
+
+            particles.forEach(p => {
+                if (p.type === 'flash' || p.type === 'screen_flash') {
+                    ctx.fillStyle = p.color || '#fff'; ctx.globalAlpha = p.life; ctx.fillRect(p.x, p.y, p.w, p.h); ctx.globalAlpha = 1.0;
+                } else {
+                    ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life); ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0;
+                }
+            });
+
+            floatingTexts.forEach(ft => {
+                ctx.fillStyle = ft.color; ctx.globalAlpha = Math.max(0, ft.life);
+                ctx.font = '14px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText(ft.text, ft.x, ft.y); ctx.globalAlpha = 1.0;
+            });
+
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(0, groundY, width, height - groundY);
+            ctx.fillStyle = '#334155'; ctx.fillRect(0, groundY, width, 6);
+
+            const scoreEl = document.getElementById('hud-score'); if(scoreEl) scoreEl.innerText = score;
+            const hudCoinsEl = document.getElementById('hud-coins'); if(hudCoinsEl) hudCoinsEl.innerText = saveData.economy.coins;
         }
 
-        function initBackground() {
-            stars = [];
-            for(let i=0; i<100; i++) {
-                stars.push({
-                    x: Math.random()*width, 
-                    y: Math.random()*height, 
-                    size: Math.random()*2+1, 
-                    color: `rgba(255,255,255,${Math.random()})`, 
-                    speed: Math.random() * 0.5 + 0.1
-                });
-            }
-
-            menuPhantomBlades = [];
+        window.updateAndDrawGumball = function() {
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0,width,height);
+            ctx.fillStyle = '#fff'; ctx.font = '24px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText("GUMBALL MACHINE", width/2, height/2 - 120);
+            ctx.fillStyle = '#db2777'; ctx.beginPath(); ctx.arc(width/2, height/2, 80, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#fbcfe8'; ctx.beginPath(); ctx.arc(width/2-20, height/2-20, 20, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#9d174d'; ctx.fillRect(width/2-30, height/2+60, 60, 40);
+        }
+        window.updateAndDrawWheel = function() {
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0,0,width,height);
+            ctx.fillStyle = '#fff'; ctx.font = '24px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText("PRIZE WHEEL", width/2, height/2 - 120);
+            ctx.save(); ctx.translate(width/2, height/2); ctx.rotate(globalTick * 0.02);
             for(let i=0; i<8; i++) {
-                menuPhantomBlades.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    radius: 100 + Math.random() * 200,
-                    rotation: Math.random() * Math.PI * 2,
-                    rotSpeed: (Math.random() - 0.5) * 0.02,
-                    vx: (Math.random() - 0.5) * 1.5,
-                    vy: (Math.random() - 0.5) * 0.5,
-                    alpha: Math.random() * 0.08 + 0.02
-                });
+                ctx.rotate(Math.PI/4); ctx.fillStyle = i%2===0 ? '#f97316' : '#fbbf24';
+                ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(80, -35); ctx.lineTo(80, 35); ctx.fill();
             }
+            ctx.restore();
+            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(width/2+90, height/2); ctx.lineTo(width/2+110, height/2-10); ctx.lineTo(width/2+110, height/2+10); ctx.fill();
         }
 
-        // --- GAMEPLAY LOGIC ---
+        // Initialize Context Early
+        document.addEventListener("DOMContentLoaded", () => {
+            canvas = document.getElementById('game-canvas'); ctx = canvas.getContext('2d');
+            previewCtx = document.getElementById('skin-preview')?.getContext('2d');
+            loadGame();
+        });
 
-        function startGame() {
-            gameState = 'playing';
-            score = 0;
-            sessionCoins = 0;
-            frameCount = 0;
-            difficultyMultiplier = 1;
-            
-            player.y = groundY - player.size;
-            player.vy = 0;
-            player.color = SKINS[saveData.inventory.activeSkin] || '#fff';
-            
-            sawblades = [];
-            coins = [];
-            particles = [];
-            floatingTexts = [];
-            
-            hideAllMenus();
-            elHud.classList.remove('hidden');
-            updateHud();
-        }
-
-        function jump() {
-            if(gameState === 'playing' && player.isGrounded) {
-                player.vy = player.jumpPower;
-                player.isGrounded = false;
-                spawnParticles(player.x + player.size/2, player.y + player.size, 5, '#555');
-            }
-        }
-
-        function spawnParticles(x, y, count, color, speed = 2) {
-            for(let i=0; i<count; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: (Math.random() - 0.5) * speed * 2,
-                    vy: (Math.random() - 0.5) * speed * 2 - 1,
-                    life: 1.0,
-                    decay: Math.random() * 0.02 + 0.02,
-                    color: color,
-                    size: Math.random() * 4 + 2
-                });
-            }
-        }
-
-        function spawnFloatingText(x, y, text, color) {
-            floatingTexts.push({ x, y, text, color, life: 1.0, vy: -1 });
-        }
-
-        function updatePhysics() {
-            // Player Y physics
-            player.vy += player.gravity;
-            player.y += player.vy;
-
-            if(player.y + player.size >= groundY) {
-                player.y = groundY - player.size;
-                player.vy = 0;
-                player.isGrounded = true;
-            } else {
-                player.isGrounded = false;
-            }
-
-            // Difficulty curve
-            difficultyMultiplier = 1 + (score / 1000);
-
-            // Spawning Logic
-            if(frameCount % Math.max(30, Math.floor(90 / difficultyMultiplier)) === 0) {
-                // Spawn Sawblade
-                let radius = 20 + Math.random() * 25;
-                let speed = (4 + Math.random() * 4) * difficultyMultiplier;
-                // Sometimes spawn flying blades
-                let yPos = groundY - radius;
-                if(Math.random() > 0.7) yPos -= (40 + Math.random() * 80); 
-
-                sawblades.push({
-                    x: width + radius,
-                    y: yPos,
-                    radius: radius,
-                    speed: speed,
-                    rotation: 0,
-                    rotSpeed: speed * 0.05
-                });
-            }
-
-            if(frameCount % 120 === 0 && Math.random() > 0.3) {
-                // Spawn Coin
-                let yPos = groundY - 30 - Math.random() * 100;
-                coins.push({
-                    x: width + 20,
-                    y: yPos,
-                    radius: 12,
-                    speed: 3 + Math.random() * 2
-                });
-            }
-
-            // Update Entities
-            for(let i = sawblades.length - 1; i >= 0; i--) {
-                let b = sawblades[i];
-                b.x -= b.speed;
-                b.rotation -= b.rotSpeed;
-
-                // Collision detection (Circle vs Rect)
-                let distX = Math.abs(b.x - (player.x + player.size/2));
-                let distY = Math.abs(b.y - (player.y + player.size/2));
-
-                if (distX <= (player.size/2 + b.radius - 5) && distY <= (player.size/2 + b.radius - 5)) {
-                    die();
-                }
-
-                if(b.x < -b.radius) sawblades.splice(i, 1);
-            }
-
-            for(let i = coins.length - 1; i >= 0; i--) {
-                let c = coins[i];
-                c.x -= c.speed;
-
-                // Collision (Simple distance)
-                let dx = c.x - (player.x + player.size/2);
-                let dy = c.y - (player.y + player.size/2);
-                let dist = Math.sqrt(dx*dx + dy*dy);
-
-                if(dist < c.radius + player.size/2) {
-                    sessionCoins++;
-                    saveData.economy.coins++;
-                    score += 50;
-                    spawnParticles(c.x, c.y, 8, '#fbbf24');
-                    spawnFloatingText(c.x, c.y, "+1", "#fbbf24");
-                    coins.splice(i, 1);
-                    updateHud();
-                }
-                else if(c.x < -c.radius) {
-                    coins.splice(i, 1);
-                }
-            }
-
-            // Update Particles
-            for(let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life -= p.decay;
-                if(p.life <= 0) particles.splice(i, 1);
-            }
-
-            // Update floating texts
-            for(let i = floatingTexts.length - 1; i >= 0; i--) {
-                let ft = floatingTexts[i];
-                ft.y += ft.vy;
-                ft.life -= 0.02;
-                if(ft.life <= 0) floatingTexts.splice(i, 1);
-            }
-
-            score++;
-            if(frameCount % 10 === 0) updateHud();
-        }
-
-        function die() {
-            gameState = 'dead';
-            saveData.stats.totalDeaths++;
-            if(score > saveData.stats.highScore) {
-                saveData.stats.highScore = score;
-            }
-            saveGame();
-            
-            spawnParticles(player.x + player.size/2, player.y + player.size/2, 50, '#e63946', 6);
-            
-            setTimeout(() => {
-                elHud.classList.add('hidden');
-                document.getElementById('death-score').innerText = score;
-                document.getElementById('death-coins').innerText = sessionCoins;
-                document.getElementById('death-high').innerText = saveData.stats.highScore;
-                elDeathMenu.classList.remove('hidden');
-            }, 500);
-        }
+        // ==========================================
+        // PART 2: USER PROVIDED LOGIC SNIPPET
+        // ==========================================
 
         // --- DRAWING ---
+        window.createParticles = function(x, y, color, count) { for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color }); }
+        window.spawnBlade = function() { const size = 64; const x = Math.random() * (width - size); const dir = Math.random() > 0.5 ? 1 : -1; const rotSpeed = dir * (0.1 + Math.random() * 0.5); blades.push({ x, y: -size - 20, size, vx: (Math.random() - 0.5) * 12, vy: 7.5, rot: Math.random() * 6.28, rotSpeed: rotSpeed, tagged: false, trail: [] }); }
+        window.handleJump = function() { if (player.grounded) { playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; } else if (jumpCount < 2) { playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; window.createParticles(player.x + 16, player.y + 16, '#fff', 5); } }
 
-        function drawSawblade(ctx, x, y, radius, rotation, color = '#e63946', style='normal') {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(rotation);
-            
-            ctx.fillStyle = (style === 'phantom') ? color : '#2b2d42';
-            ctx.strokeStyle = color;
-            ctx.lineWidth = (style === 'phantom') ? 2 : 4;
-            
-            ctx.beginPath();
-            let teeth = 12;
-            for(let i=0; i<teeth; i++) {
-                let angle = (i / teeth) * Math.PI * 2;
-                let nextAngle = ((i + 0.5) / teeth) * Math.PI * 2;
-                
-                let innerR = radius * 0.7;
-                let outerR = radius;
-
-                if(i===0) ctx.moveTo(Math.cos(angle)*innerR, Math.sin(angle)*innerR);
-                else ctx.lineTo(Math.cos(angle)*innerR, Math.sin(angle)*innerR);
-                
-                ctx.lineTo(Math.cos(nextAngle)*outerR, Math.sin(nextAngle)*outerR);
-            }
-            ctx.closePath();
-            
-            if(style !== 'phantom') ctx.fill();
-            ctx.stroke();
-
-            // Inner hole
-            ctx.beginPath();
-            ctx.arc(0, 0, radius * 0.2, 0, Math.PI*2);
-            ctx.fillStyle = (style === 'phantom') ? 'transparent' : '#050505';
-            if(style !== 'phantom') ctx.fill();
-            ctx.stroke();
-            
-            ctx.restore();
-        }
-
-        function drawBackground() {
-            ctx.fillStyle = '#050505';
+        window.drawBackground = function(ctx, width, height, tick) {
+            const bg = BACKGROUNDS[saveData.settings.bg] || BACKGROUNDS['default'];
+            if (bg.type === 'sunset') { const grd = ctx.createLinearGradient(0, 0, 0, height); grd.addColorStop(0, "#0f172a"); grd.addColorStop(0.5, "#4c1d95"); grd.addColorStop(1, "#be185d"); ctx.fillStyle = grd; } else { ctx.fillStyle = bg.color; }
             ctx.fillRect(0, 0, width, height);
+            if (bg.type === 'stars' || bg.type === 'sunset') { stars.forEach(s => { s.blink++; if(Math.sin(s.blink * 0.1) > 0) { ctx.fillStyle = s.color; ctx.fillRect(s.x, s.y, s.size, s.size); } }); if (bg.type === 'sunset') { ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(width/2, height*0.7, 100, 0, Math.PI*2); ctx.fill(); for(let i=0; i<10; i++) { ctx.fillStyle = bg.color; ctx.fillRect(width/2 - 110, height*0.7 - 50 + i*15, 220, 5); } } }
+            else if (bg.type === 'mezz') { const floorHeight = 100; for(let i=0; i<width; i+=40) { ctx.fillStyle = i%80===0 ? '#5d4037' : '#4e342e'; ctx.fillRect(i, height-floorHeight, 40, floorHeight); } ctx.fillStyle = '#000'; ctx.fillRect(0, height-floorHeight-20, width, 10); for(let i=0; i<width; i+=60) ctx.fillRect(i, height-floorHeight-20, 5, 20); const shelfY = height/2 - 100; ctx.fillStyle = '#261b16'; ctx.fillRect(50, shelfY, width-100, 150); ctx.fillStyle = '#3e2723'; ctx.fillRect(50, shelfY + 50, width-100, 10); ctx.fillRect(50, shelfY + 100, width-100, 10); }
+            else if (bg.type === 'curry_court') { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(50, 50, width-100, height-100); ctx.beginPath(); ctx.moveTo(width/2, 50); ctx.lineTo(width/2, height-50); ctx.stroke(); ctx.beginPath(); ctx.arc(width/2, height/2, 50, 0, Math.PI*2); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = 'bold 100px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.globalAlpha = 0.3; ctx.fillText('DA', width/2, height/2); ctx.globalAlpha = 1.0; }
+            else if (bg.type === 'jcsmp') { const blockSize = 40; for(let x=0; x<width; x+=blockSize) { const noise = Math.sin(x*0.01 + tick*0.01) * 3; const h = height/2 + noise * blockSize; ctx.fillStyle = '#22c55e'; ctx.fillRect(x, h, blockSize, blockSize); ctx.fillStyle = '#78350f'; ctx.fillRect(x, h+blockSize, blockSize, height-h-blockSize); } }
+            else if (bg.type === 'grid') { ctx.strokeStyle = '#d946ef'; ctx.lineWidth = 1; const offset = (tick * 2) % 40; for(let y = 0; y < height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y + offset); ctx.lineTo(width, y + offset); ctx.stroke(); } }
+        };
 
-            // Stars / Space Dust
-            ctx.fillStyle = '#fff';
-            stars.forEach(s => {
-                s.x -= s.speed * (gameState === 'playing' ? difficultyMultiplier : 0.2);
-                if(s.x < 0) s.x = width;
-                ctx.globalAlpha = Math.random() > 0.95 ? 0 : 1; // Twinkle
-                ctx.fillRect(s.x, s.y, s.size, s.size);
+        window.drawSkin = function(ctx, x, y, size, skinId, frame) {
+            const skin = SKINS[skinId] || SKINS['default']; const s = size; ctx.save(); ctx.translate(x, y);
+            if(skin.type === 'glitch') { ctx.fillStyle = `hsl(${Math.random()*360}, 100%, 50%)`; ctx.fillRect(Math.random()*4-2, Math.random()*4-2, s, s); ctx.globalCompositeOperation = 'difference'; ctx.fillStyle = '#fff'; ctx.fillRect(0,0,s,s); ctx.restore(); return; }
+            if(skin.type === 'solar') { ctx.shadowBlur = 10; ctx.shadowColor = '#f97316'; } if(skin.type === 'nebula') { ctx.shadowBlur = 10; ctx.shadowColor = '#d946ef'; }
+            if(skin.type === 'matrix') { ctx.strokeStyle = '#0f0'; ctx.lineWidth = 1; ctx.strokeRect(0,0,s,s); }
+            ctx.fillStyle = skin.color || '#fff'; ctx.fillRect(0, 0, s, s); ctx.shadowBlur = 0;
+            if(skin.type === 'curry') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#166534'; ctx.font = '10px monospace'; ctx.fillText('22', 8, 20); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(28, 10); ctx.lineTo(36, -10); ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(36, -10, 4, 0, Math.PI*2); ctx.stroke(); }
+            else if(skin.type === 'wilks') { ctx.fillStyle = '#dcb28b'; ctx.fillRect(0,0,s,s); ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(4, 12, 10, 8); ctx.fillRect(18, 12, 10, 8); ctx.fillRect(10, 22, 12, 8); ctx.fillStyle = '#000'; ctx.fillRect(10,6,4,2); ctx.fillRect(18,6,4,2); ctx.fillRect(12,10,8,2); }
+            else if(skin.type === 'plumbous') { ctx.save(); ctx.translate(4,4); ctx.scale(0.8, 0.8); ctx.fillStyle = '#fbbf24'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#000'; ctx.fillRect(4,6,6,6); ctx.fillRect(14,6,6,6); ctx.fillRect(24,6,4,6); ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(8, 28, 4, 0, Math.PI*2); ctx.arc(24, 28, 4, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
+            else if(skin.type === 'candella') { ctx.fillStyle = '#000'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#d4a373'; ctx.fillRect(4,4,24,24); ctx.fillStyle = '#000'; ctx.fillRect(0,0,32,8); ctx.fillRect(0,0,4,32); ctx.fillRect(28,0,4,32); ctx.fillStyle = '#000'; ctx.fillRect(8,12,4,4); ctx.fillRect(20,12,4,4); ctx.fillStyle = '#be123c'; ctx.fillRect(12,22,8,2); }
+            else if(skin.type === 'talia') { ctx.save(); ctx.translate(-4,-4); ctx.scale(1.25, 1.25); ctx.fillStyle = '#3f2c22'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#a16207'; ctx.fillRect(6,8,20,20); ctx.fillStyle = '#000'; ctx.fillRect(10,14,4,4); ctx.fillRect(20,14,4,4); ctx.restore(); }
+            else if(skin.type === 'thomas') { ctx.save(); ctx.translate(-4,-4); ctx.scale(1.25, 1.25); ctx.fillStyle = '#ffe0bd'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#fef08a'; ctx.fillRect(0,0,32,10); ctx.fillStyle = '#000'; ctx.fillRect(10,14,4,4); ctx.fillRect(20,14,4,4); ctx.restore(); }
+            else if(skin.type === 'markian') { ctx.fillStyle = '#fff1f2'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#451a03'; ctx.fillRect(0,0,32,8); ctx.fillRect(2,6,4,4); ctx.fillRect(26,5,4,5); ctx.fillStyle = '#ef4444'; ctx.fillRect(6,12,2,2); ctx.fillRect(24,20,3,3); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(16, 22, 6, 0, Math.PI); ctx.stroke(); ctx.fillRect(8,12,4,4); ctx.fillRect(20,12,4,4); }
+            else if(skin.type === 'husband') { ctx.fillStyle = '#573018'; ctx.fillRect(0,0,32,8); ctx.fillStyle = '#fca5a5'; ctx.fillRect(0,8,32,24); ctx.fillStyle = '#0021A5'; ctx.fillRect(0,20,32,12); ctx.fillStyle = '#FA4616'; ctx.fillRect(12,24,8,4); ctx.fillStyle = '#22c55e'; ctx.fillRect(14,25,4,2); ctx.fillStyle = '#000'; ctx.fillRect(8,14,4,4); ctx.fillRect(20,14,4,4); }
+            else if(skin.type === 'walter') { ctx.fillStyle = '#1e40af'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#dc2626'; ctx.fillRect(0,10,32,4); ctx.fillStyle = '#fca5a5'; ctx.fillRect(4,4,24,20); ctx.fillStyle = '#9ca3af'; ctx.fillRect(4,4,24,4); ctx.fillStyle = '#000'; ctx.fillRect(8,12,2,2); ctx.fillRect(22,12,2,2); }
+            else if(skin.type === 'nick') { ctx.fillStyle = '#fef08a'; ctx.fillRect(4,0,24,8); ctx.fillStyle = '#fca5a5'; ctx.fillRect(8,4,16,14); ctx.fillStyle = '#000'; ctx.fillRect(0,18,32,14); ctx.fillRect(0,8,8,10); ctx.fillRect(24,8,8,10); ctx.fillStyle = '#000'; ctx.fillRect(10,10,4,4); ctx.fillRect(18,10,4,4); }
+            else if(skin.type === 'sam_kim') { ctx.fillStyle = '#a16207'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#000'; ctx.fillRect(0,0,32,6); ctx.fillStyle = '#fff'; ctx.fillRect(6, 20, 20, 8); ctx.fillRect(12, 28, 4, 4); ctx.fillRect(20, 28, 6, 10); ctx.fillStyle = '#000'; ctx.fillRect(8,12,4,4); ctx.fillRect(20,12,4,4); ctx.fillStyle = '#fff'; ctx.fillRect(26, 10, 8, 16); ctx.fillStyle = '#3b82f6'; ctx.fillRect(28, 14, 4, 4); }
+            else if(skin.type === 'jcsmp_king') { ctx.fillStyle = '#573018'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#fca5a5'; ctx.fillRect(4,8,24,24); ctx.fillStyle = '#fbbf24'; ctx.fillRect(0,0,32,6); ctx.fillRect(0,-4,4,4); ctx.fillRect(14,-4,4,4); ctx.fillRect(28,-4,4,4); ctx.fillStyle = '#000'; ctx.fillRect(8,14,4,4); ctx.fillRect(20,14,4,4); ctx.fillStyle = '#ef4444'; ctx.fillRect(4,24,24,8); }
+            else if(skin.type === 'dog') { ctx.fillStyle = '#a16207'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#fff'; ctx.fillRect(0,20,32,12); ctx.fillStyle = '#000'; ctx.fillRect(6,10,4,4); ctx.fillRect(22,10,4,4); ctx.fillRect(14,16,4,4); }
+            else if(skin.type === 'basic') { ctx.fillStyle = '#573018'; ctx.fillRect(0,0,32,10); ctx.fillStyle = '#fca5a5'; ctx.fillRect(0,10,32,22); ctx.fillStyle = '#000'; ctx.fillRect(8,16,4,4); ctx.fillRect(20,16,4,4); }
+            else if(skin.type === 'stripe_h') { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(0, s/3, s, s/3); }
+            else { ctx.fillStyle = '#fff'; ctx.fillRect(4, 8, 8, 8); ctx.fillRect(20, 8, 8, 8); ctx.fillStyle = '#000'; ctx.fillRect(8, 10, 4, 4); ctx.fillRect(24, 10, 4, 4); }
+            ctx.restore();
+        };
+
+        // --- MANAGERS ---
+        window.updateMenuUI = function() {
+            document.getElementById('menu-coins').innerText = saveData.economy.coins;
+            renderRank('menu-rank-container', saveData.stats.highScore);
+            renderPfp();
+            document.getElementById('player-name-input').value = saveData.profile.name;
+            document.getElementById('menu-rank-text').innerText = getRankData(saveData.stats.highScore).name;
+            document.getElementById('hud-coins').innerText = saveData.economy.coins;
+            document.getElementById('best-val').innerText = saveData.stats.highScore;
+            document.getElementById('menu-gumball-btn').innerText = `GUMBALL (${getGumballCost()}🟡)`;
+            document.getElementById('gumball-btn').innerText = `TURN KNOB (${getGumballCost()}🟡)`;
+            document.getElementById('menu-wheel-btn').innerText = `SPIN WHEEL (${getWheelCost()}🟡)`;
+            document.getElementById('wheel-spin-btn').innerText = `SPIN (${getWheelCost()}🟡)`;
+        }
+
+        window.showMainMenu = function() { currentState = GAME_STATE.MENU; document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('menu').classList.remove('hidden'); window.updateMenuUI(); };
+        window.showSkins = function() { document.getElementById('menu').classList.add('hidden'); document.getElementById('skin-menu').classList.remove('hidden'); renderGrid('skin'); };
+        window.showBackgrounds = function() { document.getElementById('menu').classList.add('hidden'); document.getElementById('bg-menu').classList.remove('hidden'); renderGrid('bg'); };
+        window.showLeaderboard = function() { document.getElementById('leaderboard-modal').classList.remove('hidden'); window.fetchLeaderboardCloud(); };
+        window.showChangelog = function() { document.getElementById('changelog-modal').classList.remove('hidden'); };
+        window.showSettings = function() { document.getElementById('settings-modal').classList.remove('hidden'); };
+        
+        window.startGame = function() {
+            playSound('click'); if (audioCtx.state === 'suspended') audioCtx.resume();
+            currentState = GAME_STATE.PLAYING; score = 0; gameTime = 100; blades = []; items = []; particles = []; floatingTexts = []; spawnTimer = 0; spawnRate = 45; player.trail = []; player.x = width/2 - 16; player.y = groundY - 32; earnedCoins = 0;
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('ui-layer').classList.remove('hidden'); document.getElementById('time-container').classList.remove('hidden');
+            window.updateMenuUI();
+        }
+
+        window.endGame = function() {
+            playSound('gameover'); currentState = GAME_STATE.GAMEOVER;
+            if (score > saveData.stats.highScore) { saveData.stats.highScore = score; window.submitScoreCloud(score); }
+            const earned = Math.ceil(score * 0.5); saveData.economy.coins += earned; saveGame();
+            document.getElementById('final-score').innerText = score; document.getElementById('earned-coins').innerText = earned; renderRank('game-over-rank', score); document.getElementById('game-over').classList.remove('hidden');
+        }
+
+        function renderGrid(type) {
+            const isSkin = type === 'skin'; const grid = document.getElementById(isSkin ? 'skin-grid' : 'bg-grid'); grid.innerHTML = '';
+            const allItems = Object.keys(isSkin ? SKINS : BACKGROUNDS); const unlocked = isSkin ? saveData.inventory.skins : saveData.inventory.bgs; const current = isSkin ? saveData.profile.skin : saveData.settings.bg;
+            document.getElementById(isSkin ? 'skin-count' : 'bg-count').innerText = `${unlocked.length}/${allItems.length} UNLOCKED`;
+            const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'mythic', 'legendary'];
+            allItems.sort((a,b) => rarityOrder.indexOf((isSkin ? SKINS[a] : BACKGROUNDS[a]).rarity) - rarityOrder.indexOf((isSkin ? SKINS[b] : BACKGROUNDS[b]).rarity));
+            allItems.forEach(id => {
+                const item = isSkin ? SKINS[id] : BACKGROUNDS[id];
+                const c = document.createElement('canvas'); c.width=32; c.height=32; c.className = `skin-item w-full aspect-square rarity-${item.rarity} ${current === id ? 'selected' : ''}`;
+                if(!unlocked.includes(id)) c.classList.add('locked');
+                else {
+                    const ctx = c.getContext('2d');
+                    if(isSkin) window.drawSkin(ctx, 0, 0, 32, id, 0); else { ctx.fillStyle = item.color || '#fff'; ctx.fillRect(0,0,32,32); }
+                    c.onclick = () => { playSound('click'); if(isSkin) saveData.profile.skin = id; else saveData.settings.bg = id; saveGame(); renderGrid(type); if(isSkin && previewCtx) { previewCtx.clearRect(0,0,64,64); window.drawSkin(previewCtx, 16, 16, 32, id, globalTick); } };
+                    c.title = item.name;
+                }
+                grid.appendChild(c);
             });
-            ctx.globalAlpha = 1.0;
+            if(isSkin && previewCtx) { previewCtx.clearRect(0,0,64,64); window.drawSkin(previewCtx, 16, 16, 32, current, globalTick); }
+        }
 
-            // --- COOL MENU BACKGROUND MOVEMENT ---
-            if(gameState === 'menu' || gameState === 'shop') {
-                menuPhantomBlades.forEach(b => {
-                    b.x += b.vx;
-                    b.y += b.vy;
-                    b.rotation += b.rotSpeed;
-                    
-                    // Wrap around screen
-                    if(b.x < -b.radius) b.x = width + b.radius;
-                    if(b.x > width + b.radius) b.x = -b.radius;
-                    if(b.y < -b.radius) b.y = height + b.radius;
-                    if(b.y > height + b.radius) b.y = -b.radius;
-
-                    ctx.globalAlpha = b.alpha;
-                    drawSawblade(ctx, b.x, b.y, b.radius, b.rotation, '#e63946', 'phantom');
+        // --- LOOP ---
+        window.loop = function() {
+            requestAnimationFrame(window.loop);
+            scheduleAudio();
+            if(currentState !== GAME_STATE.MENU) window.drawBackground(ctx, width, height, globalTick); else { ctx.fillStyle = '#111'; ctx.fillRect(0,0,width,height); stars.forEach(s => { s.blink++; if(Math.sin(s.blink * 0.1) > 0) { ctx.fillStyle = s.color; ctx.fillRect(s.x, s.y, s.size, s.size); } }); }
+            if (currentState === GAME_STATE.GUMBALL) { window.updateAndDrawGumball(); return; }
+            if (currentState === GAME_STATE.WHEEL) { window.updateAndDrawWheel(); return; }
+            if (currentState === GAME_STATE.PLAYING) {
+                globalTick++; gameTime -= 0.07; if (gameTime <= 0) window.endGame(); document.getElementById('time-fill').style.width = Math.max(0, gameTime) + "%";
+                if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed; else if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed; else player.vx *= 0.75; 
+                player.vy += player.gravity; player.x += player.vx; player.y += player.vy;
+                const hue = (globalTick * 5) % 360; player.trail.unshift({x: player.x, y: player.y, a: player.angle, color: `hsl(${hue}, 80%, 60%)`}); if(player.trail.length > 8) player.trail.pop();
+                if (player.x < 0) player.x = 0; if (player.x > width - player.w) player.x = width - player.w;
+                if (player.y > groundY - player.h) {
+                    player.y = groundY - player.h; player.vy = 0; player.grounded = true; jumpCount = 0;
+                    let taggedIndices = []; for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) taggedIndices.push(i); }
+                    if (taggedIndices.length > 0) {
+                        let multiplier = taggedIndices.length > 1 ? 2 : 1; 
+                        if (taggedIndices.length >= 4) { score *= 2; playSound('coin'); floatingTexts.push({text: "TOTAL SCORE x2!!!", x: width/2, y: height/2, color: '#ef4444', life: 2.0, vy: -1}); particles.push({x:0,y:0,w:width,h:height,life:0.5,type:'screen_flash', color:'rgba(255, 255, 255, 0.8)'}); } 
+                        else if (taggedIndices.length > 1) { floatingTexts.push({text: taggedIndices.length + "x COMBO!", x: player.x, y: player.y-20, color: '#fbbf24', life: 1.0, vy: -1.5}); }
+                        for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) { const b = blades[i]; window.createParticles(b.x + b.size/2, b.y + b.size/2, '#4ade80', 10); items.push({ x: b.x + b.size/2, y: b.y + b.size/2, vx: (Math.random()-0.5)*10, vy: -7, pulse: 0 }); blades.splice(i, 1); score += multiplier; } }
+                        particles.push({x:0,y:groundY,w:width,h:5,life:0.5,type:'flash'});
+                    }
+                }
+                spawnTimer++; if (spawnTimer > spawnRate) { window.spawnBlade(); spawnTimer = 0; spawnRate = Math.max(8, spawnRate - 0.08); }
+                for (let i = blades.length - 1; i >= 0; i--) {
+                    let b = blades[i]; b.x += b.vx; b.y += b.vy; b.rot += b.rotSpeed; if (b.x < 0) { b.x = 0; b.vx *= -1; } if (b.x > width - b.size) { b.x = width - b.size; b.vx *= -1; } if (b.y > groundY - b.size) { b.y = groundY - b.size; b.vy *= -0.5; }
+                    if (Math.hypot((player.x + 16) - (b.x + 32), (player.y + 16) - (b.y + 32)) < 36) { window.endGame(); return; }
+                    if (!b.tagged && (player.y + 32) < b.y + 40 && Math.abs((player.x + 16) - (b.x + 32)) < 55) { b.tagged = true; window.createParticles(b.x + 32, b.y, '#4ade80', 8); }
+                }
+                items.forEach((it, idx) => {
+                    it.x += it.vx; it.y += it.vy; it.vy += 0.4; it.pulse += 0.2; if (it.y > groundY - 10) { it.y = groundY - 10; it.vy *= -0.5; it.vx *= 0.6; if(Math.abs(it.vx)<0.1)it.vx=0; }
+                    if (Math.hypot((player.x + 16) - it.x, (player.y + 16) - it.y) < 45) { playSound('coin'); gameTime = Math.min(100, gameTime + 15); items.splice(idx, 1); window.createParticles(it.x, it.y, '#fbbf24', 8); earnedCoins++; saveData.economy.coins++; }
                 });
-                ctx.globalAlpha = 1.0;
+                for(let i=particles.length-1; i>=0; i--) { let p = particles[i]; if(p.type === 'flash') p.life -= 0.1; else { p.x += p.vx; p.y += p.vy; p.life -= 0.03; } if (p.life <= 0) particles.splice(i, 1); }
+                for(let i=floatingTexts.length-1; i>=0; i--) { let ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.02; if (ft.life <= 0) floatingTexts.splice(i, 1); }
             }
-
-            // Synthwave Grid on the floor
-            ctx.strokeStyle = '#e63946';
-            ctx.lineWidth = 1;
-            ctx.globalAlpha = 0.3;
-            ctx.beginPath();
-            
-            let gridSpeed = gameState === 'playing' ? 5 * difficultyMultiplier : 1;
-            gridOffset = (gridOffset + gridSpeed) % 40;
-            
-            // Horizontal lines (perspective approximation)
-            for(let i = 0; i < 5; i++) {
-                let y = groundY + Math.pow(i, 1.5) * 10;
-                if(y < height) {
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(width, y);
-                }
-            }
-            // Vertical lines moving left
-            for(let x = -40 + (gridOffset % 40); x < width; x += 40) {
-                ctx.moveTo(x, groundY);
-                ctx.lineTo(x - 50, height); // slanting left for speed illusion
-            }
-            ctx.stroke();
-            ctx.globalAlpha = 1.0;
-
-            // Ground Line
-            ctx.fillStyle = '#e63946';
-            ctx.fillRect(0, groundY, width, 4);
+            window.drawGame();
         }
 
-        function drawGame() {
-            // Draw Player
-            if(gameState === 'playing') {
-                ctx.fillStyle = player.color;
-                // Add a trail or glow if jumping
-                if(!player.isGrounded) {
-                    ctx.shadowColor = player.color;
-                    ctx.shadowBlur = 10;
-                }
-                ctx.fillRect(player.x, player.y, player.size, player.size);
-                ctx.shadowBlur = 0;
-                
-                // Draw inner details (eyes or visor)
-                ctx.fillStyle = '#000';
-                ctx.fillRect(player.x + player.size - 10, player.y + 6, 4, 8);
-            }
-
-            // Draw Sawblades
-            sawblades.forEach(b => drawSawblade(ctx, b.x, b.y, b.radius, b.rotation));
-
-            // Draw Coins
-            coins.forEach(c => {
-                ctx.beginPath();
-                ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2);
-                ctx.fillStyle = '#fbbf24'; // Gold
-                ctx.fill();
-                ctx.strokeStyle = '#fef08a';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // inner detail
-                ctx.fillStyle = '#d97706';
-                ctx.fillRect(c.x - 2, c.y - 6, 4, 12);
-            });
-
-            // Draw Particles
-            particles.forEach(p => {
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.life;
-                ctx.fillRect(p.x, p.y, p.size, p.size);
-            });
-            ctx.globalAlpha = 1.0;
-
-            // Draw Floating Texts
-            ctx.font = '10px "Press Start 2P"';
-            ctx.textAlign = 'center';
-            floatingTexts.forEach(ft => {
-                ctx.fillStyle = ft.color;
-                ctx.globalAlpha = ft.life;
-                ctx.fillText(ft.text, ft.x, ft.y);
-            });
-            ctx.globalAlpha = 1.0;
-        }
-
-        function loop() {
-            drawBackground();
-            
-            if(gameState === 'playing') {
-                updatePhysics();
-            }
-            
-            drawGame();
-            frameCount++;
-            requestAnimationFrame(loop);
-        }
-
-        // --- UI & MENUS ---
-
-        function hideAllMenus() {
-            elMainMenu.classList.add('hidden');
-            elShopMenu.classList.add('hidden');
-            elDeathMenu.classList.add('hidden');
-            elHud.classList.add('hidden');
-        }
-
-        function showMainMenu() {
-            gameState = 'menu';
-            hideAllMenus();
-            elMainMenu.classList.remove('hidden');
-        }
-
-        function showShop() {
-            gameState = 'shop';
-            hideAllMenus();
-            document.getElementById('shop-coins').innerText = saveData.economy.coins;
-            renderInventory();
-            elShopMenu.classList.remove('hidden');
-        }
-
-        function showLeaderboard() {
-            alert(`STATS\nHigh Score: ${saveData.stats.highScore}\nTotal Deaths: ${saveData.stats.totalDeaths}`);
-        }
-
-        function showSettings() {
-            alert("Settings: W.I.P.\nAudio controls coming soon!");
-        }
-
-        function updateHud() {
-            document.getElementById('hud-score').innerText = score;
-            document.getElementById('hud-coins').innerText = sessionCoins;
-        }
-
-        // --- SHOP & INVENTORY LOGIC ---
-
-        function renderInventory() {
-            const list = document.getElementById('inventory-list');
-            list.innerHTML = '';
-            
-            saveData.inventory.skins.forEach(skin => {
-                const btn = document.createElement('button');
-                btn.innerText = skin.toUpperCase();
-                btn.className = `p-2 border-2 ${saveData.inventory.activeSkin === skin ? 'border-green-400 bg-green-900/50 text-white' : 'border-gray-600 bg-gray-800 hover:bg-gray-700'}`;
-                btn.style.color = SKINS[skin];
-                btn.onclick = () => {
-                    saveData.inventory.activeSkin = skin;
-                    saveGame();
-                    renderInventory();
-                };
-                list.appendChild(btn);
-            });
-        }
-
-        function rollGumball() {
-            const cost = 100;
-            if(saveData.economy.coins < cost) {
-                document.getElementById('gumball-display').innerText = "NOT ENOUGH COINS!";
-                setTimeout(() => document.getElementById('gumball-display').innerText = "❓", 1500);
-                return;
-            }
-
-            // Deduct
-            saveData.economy.coins -= cost;
-            saveData.economy.gumballCount++;
-            document.getElementById('shop-coins').innerText = saveData.economy.coins;
-
-            // Determine unowned skins
-            let unowned = ALL_SKIN_KEYS.filter(k => !saveData.inventory.skins.includes(k));
-            
-            document.getElementById('gumball-display').classList.add('animate-spin');
-            
-            setTimeout(() => {
-                document.getElementById('gumball-display').classList.remove('animate-spin');
-                if(unowned.length === 0) {
-                    // Refund or give consolation prize
-                    saveData.economy.coins += 50;
-                    document.getElementById('gumball-display').innerText = "DUPLICATE! +50©";
-                } else {
-                    // Unlock random
-                    let newSkin = unowned[Math.floor(Math.random() * unowned.length)];
-                    saveData.inventory.skins.push(newSkin);
-                    saveData.inventory.activeSkin = newSkin;
-                    document.getElementById('gumball-display').innerHTML = `<span style="color:${SKINS[newSkin]}">${newSkin.toUpperCase()} UNLOCKED!</span>`;
-                }
-                saveGame();
-                renderInventory();
-                setTimeout(() => document.getElementById('gumball-display').innerText = "❓", 2000);
-            }, 1000);
-        }
-
-        // --- INPUTS ---
-        
-        window.addEventListener('keydown', (e) => {
-            if(e.code === 'Space' || e.code === 'ArrowUp') {
-                e.preventDefault();
-                if(gameState === 'menu' || gameState === 'dead') startGame();
-                else jump();
-            }
-        });
-
-        window.addEventListener('touchstart', (e) => {
-            if(e.target.tagName !== 'BUTTON') { // Avoid double triggering if hitting a UI button
-                if(gameState === 'menu' || gameState === 'dead') startGame();
-                else jump();
-            }
-        });
-        
-        window.addEventListener('mousedown', (e) => {
-            if(e.target === canvas) {
-                jump();
-            }
-        });
-
-        // --- INITIALIZATION ---
-        
+        // --- 7. INITIALIZATION ---
         window.onload = function() {
-            loadData();
-            window.addEventListener('resize', resize);
-            resize(); // Initial sizing & bg setup
-            showMainMenu();
-            requestAnimationFrame(loop);
+            width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; groundY = height - 50;
+            stars.length = 0; for(let i=0; i<50; i++) stars.push({x: Math.random()*width, y: Math.random()*height, size: Math.random()*2+1, color: `rgba(255,255,255,${Math.random()})`, blink: Math.random()*100});
+            
+            if(!saveData.inventory) saveData.inventory = { skins: ['default'], bgs: ['default'] };
+            if(!saveData.economy) saveData.economy = { coins: 0, gumballCount: 0, wheelCount: 0 };
+            
+            window.showMainMenu(); 
+            loop();
         }
-
-        // Exposed globals for inline HTML onClick handlers
-        window.startGame = startGame;
-        window.showMainMenu = showMainMenu;
-        window.showShop = showShop;
+        window.addEventListener('resize', () => { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; groundY = height - 50; });
+        
+        // Attach globals to window
         window.showLeaderboard = showLeaderboard;
+        window.showChangelog = showChangelog;
         window.showSettings = showSettings;
-        window.rollGumball = rollGumball;
+        window.wipeSave = wipeSave;
+        window.devUnlock = devUnlock;
+        window.turnKnob = turnKnob;
+        window.startGumball = startGumball;
+        window.startWheel = startWheel;
+        window.spinWheel = spinWheel;
+        window.closePrize = closePrize;
 
     </script>
 </body>
