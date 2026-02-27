@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SAWBLADES</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body { 
+            margin: 0; 
+            background-color: #111; 
+            overflow: hidden; 
+            font-family: 'Press Start 2P', cursive; 
+            color: #f8fafc; 
+            user-select: none; 
+            -webkit-user-select: none; 
+            cursor: default; 
+            touch-action: none; /* Prevent scroll on mobile */
+        }
+        canvas { 
+            display: block; 
+            image-rendering: pixelated; 
+        }
+
+        .scanlines { 
+            position: fixed; 
+            inset: 0; 
+            pointer-events: none; 
+            z-index: 50; 
+            opacity: 0.6; 
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); 
+            background-size: 100% 4px, 6px 100%; 
+        }
+        
+        .overlay-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        .btn {
+            background-color: #ef4444;
+            color: white;
+            border: 4px solid #7f1d1d;
+            padding: 15px 30px;
+            font-size: 16px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            margin: 10px;
+            box-shadow: 0 6px 0 #7f1d1d;
+        }
+
+        .btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #7f1d1d;
+        }
+
+        .btn:hover {
+            background-color: #f87171;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .modal {
+            background-color: rgba(0, 0, 0, 0.9);
+            border: 4px solid #ef4444;
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Scrollbar styling for modals */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #ef4444; }
+        ::-webkit-scrollbar-thumb:hover { background: #f87171; }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Main Menu UI -->
+    <div id="mainMenu" class="overlay-ui interactive">
+        <h1 class="text-5xl md:text-7xl text-red-500 mb-2 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)] text-center">SAWBLADES</h1>
+        <p class="text-sm md:text-base text-gray-400 mb-10">SURVIVE THE BLADES</p>
+        
+        <button class="btn" onclick="startGame()">PLAY</button>
+        <button class="btn" onclick="showSettings()">SETTINGS</button>
+        <button class="btn" onclick="showChangelog()">CHANGELOG</button>
+        
+        <div class="absolute bottom-5 text-xs text-gray-500">
+            High Score: <span id="menuHighScore">0</span>
+        </div>
+    </div>
+
+    <!-- Game Over UI -->
+    <div id="gameOverScreen" class="overlay-ui interactive hidden">
+        <h1 class="text-5xl text-red-600 mb-4 drop-shadow-[0_0_15px_rgba(220,38,38,1)] text-center">WASTED</h1>
+        <p class="text-xl mb-2">SCORE: <span id="finalScore" class="text-yellow-400">0</span></p>
+        <p class="text-sm text-gray-400 mb-8">HIGH SCORE: <span id="goHighScore">0</span></p>
+        
+        <button class="btn" onclick="startGame()">TRY AGAIN</button>
+        <button class="btn" onclick="showMainMenu()">MAIN MENU</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="overlay-ui interactive hidden">
+        <div class="modal flex flex-col items-center">
+            <h2 class="text-2xl text-red-500 mb-6">SETTINGS</h2>
+            
+            <div class="w-full text-left mb-6 space-y-4">
+                <div class="flex justify-between items-center">
+                    <span>MUSIC</span>
+                    <button class="btn !p-2 !text-xs" onclick="toggleMusic()" id="musicBtn">ON</button>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>SFX</span>
+                    <button class="btn !p-2 !text-xs" onclick="toggleSFX()" id="sfxBtn">ON</button>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>PARTICLES</span>
+                    <button class="btn !p-2 !text-xs" onclick="toggleParticles()" id="particleBtn">HIGH</button>
+                </div>
+            </div>
+
+            <div class="mt-4 border-t border-red-500/30 pt-4 w-full">
+                <p class="text-xs text-gray-400 mb-2">DANGER ZONE</p>
+                <button class="btn !bg-red-900 !border-red-950 !shadow-none text-xs" onclick="wipeSave()">WIPE SAVE DATA</button>
+            </div>
+
+            <button class="btn mt-6" onclick="hideModals()">CLOSE</button>
+        </div>
+    </div>
+
+    <!-- Changelog Modal -->
+    <div id="changelogModal" class="overlay-ui interactive hidden">
+        <div class="modal flex flex-col items-center">
+            <h2 class="text-2xl text-red-500 mb-6">CHANGELOG</h2>
+            
+            <div class="w-full text-left mb-6 text-sm leading-relaxed space-y-4 h-64 overflow-y-auto pr-2">
+                <div>
+                    <h3 class="text-yellow-400">v1.1.0 - The Cleanup Update</h3>
+                    <ul class="list-disc pl-5 text-gray-300 text-xs mt-2 space-y-1">
+                        <li>Removed online leaderboard functionality.</li>
+                        <li>Game is now fully playable offline.</li>
+                        <li>Optimized canvas rendering.</li>
+                        <li>Prepared for GitHub Pages deployment.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-yellow-400">v1.0.0 - Initial Release</h3>
+                    <ul class="list-disc pl-5 text-gray-300 text-xs mt-2 space-y-1">
+                        <li>Added player movement and jumping.</li>
+                        <li>Added infinite sawblade spawning.</li>
+                        <li>Added local high score saving.</li>
+                        <li>Added basic particle effects.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button class="btn mt-2" onclick="hideModals()">CLOSE</button>
+        </div>
+    </div>
+
+    <!-- HUD (Heads Up Display) -->
+    <div id="hud" class="fixed top-0 left-0 w-full p-4 pointer-events-none hidden z-20 flex justify-between items-start">
+        <div class="text-xl text-white drop-shadow-md">
+            SCORE: <span id="currentScore" class="text-yellow-400">0</span>
+        </div>
+        <div class="text-sm text-gray-400">
+            HI: <span id="hudHighScore">0</span>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. GLOBAL VARIABLES & SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, groundY;
+        let lastTime = 0;
+        let animationId;
+        
+        // Game State
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
+        let score = 0;
+        let frames = 0;
+        let difficultyMultiplier = 1;
+
+        // Entities
+        let player = {};
+        let sawblades = [];
+        let particles = [];
+        let floatingTexts = [];
+        let stars = [];
+
+        // Save Data Management
+        let saveData = {
+            highScore: 0,
+            inventory: { skins: ['default'], bgs: ['default'] },
+            economy: { coins: 0, gumballCount: 0, wheelCount: 0 },
+            settings: { music: true, sfx: true, particles: 'HIGH' }
+        };
+
+        function loadSave() {
+            const saved = localStorage.getItem('sawbladesSave');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    saveData = { ...saveData, ...parsed };
+                } catch(e) { console.error("Save file corrupted, starting fresh."); }
+            }
+            updateMenuStats();
+        }
+
+        function saveGame() {
+            localStorage.setItem('sawbladesSave', JSON.stringify(saveData));
+        }
+
+        // --- 2. INPUT HANDLING ---
+        const keys = { ArrowLeft: false, ArrowRight: false, a: false, d: false, w: false, ArrowUp: false, Space: false };
+        
+        window.addEventListener('keydown', (e) => {
+            if(keys.hasOwnProperty(e.key)) keys[e.key] = true;
+            if(e.code === 'Space') keys.Space = true;
+            
+            // Start game on space if in menu/gameover
+            if(e.code === 'Space' && (gameState === 'MENU' || gameState === 'GAMEOVER')) {
+                startGame();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if(keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            if(e.code === 'Space') keys.Space = false;
+        });
+
+        // Touch support for mobile
+        let touchX = null;
+        window.addEventListener('touchstart', (e) => {
+            if(gameState !== 'PLAYING') return;
+            touchX = e.touches[0].clientX;
+            // Jump on tap upper half, move on lower half
+            if(e.touches[0].clientY < height / 2) player.jump();
+        });
+        window.addEventListener('touchmove', (e) => {
+            if(gameState !== 'PLAYING' || touchX === null) return;
+            const currentX = e.touches[0].clientX;
+            if (currentX < touchX - 20) { keys.ArrowLeft = true; keys.ArrowRight = false; }
+            else if (currentX > touchX + 20) { keys.ArrowRight = true; keys.ArrowLeft = false; }
+        });
+        window.addEventListener('touchend', (e) => {
+            keys.ArrowLeft = false; keys.ArrowRight = false; touchX = null;
+        });
+
+        // --- 3. ENTITY CLASSES ---
+        class Player {
+            constructor() {
+                this.width = 30;
+                this.height = 30;
+                this.x = width / 2 - this.width / 2;
+                this.y = groundY - this.height;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = 5;
+                this.jumpForce = -12;
+                this.gravity = 0.6;
+                this.grounded = true;
+                this.color = '#3b82f6'; // Blue default
+                this.dead = false;
+            }
+
+            update() {
+                if (this.dead) return;
+
+                // Horizontal movement
+                if (keys.ArrowLeft || keys.a) this.vx = -this.speed;
+                else if (keys.ArrowRight || keys.d) this.vx = this.speed;
+                else this.vx = 0;
+
+                this.x += this.vx;
+
+                // Screen boundaries
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > width) this.x = width - this.width;
+
+                // Jumping and Gravity
+                if ((keys.ArrowUp || keys.w || keys.Space) && this.grounded) {
+                    this.jump();
+                }
+
+                this.vy += this.gravity;
+                this.y += this.vy;
+
+                // Ground collision
+                if (this.y + this.height >= groundY) {
+                    this.y = groundY - this.height;
+                    this.vy = 0;
+                    this.grounded = true;
+                } else {
+                    this.grounded = false;
+                }
+            }
+
+            jump() {
+                if(this.grounded && !this.dead) {
+                    this.vy = this.jumpForce;
+                    this.grounded = false;
+                    createParticles(this.x + this.width/2, this.y + this.height, 5, '#ffffff');
+                }
+            }
+
+            draw(ctx) {
+                if (this.dead) return;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Eyes
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(this.x + 5, this.y + 5, 6, 6);
+                ctx.fillRect(this.x + 19, this.y + 5, 6, 6);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(this.x + 7 + (this.vx>0?2:this.vx<0?-2:0), this.y + 7, 2, 2);
+                ctx.fillRect(this.x + 21 + (this.vx>0?2:this.vx<0?-2:0), this.y + 7, 2, 2);
+            }
+            
+            die() {
+                this.dead = true;
+                createParticles(this.x + this.width/2, this.y + this.height/2, 30, this.color);
+                endGame();
+            }
+        }
+
+        class Sawblade {
+            constructor() {
+                this.radius = Math.random() * 15 + 15; // 15 to 30
+                this.x = Math.random() > 0.5 ? -this.radius : width + this.radius;
+                this.y = groundY - this.radius - (Math.random() * 100);
+                this.vx = (Math.random() * 3 + 2) * (this.x < 0 ? 1 : -1) * difficultyMultiplier;
+                this.vy = 0;
+                this.rotation = 0;
+                this.rotationSpeed = (Math.random() * 0.2 + 0.1) * (this.vx > 0 ? 1 : -1);
+                this.color = '#94a3b8';
+                this.bounces = Math.random() > 0.7; // Some blades bounce
+            }
+
+            update() {
+                this.x += this.vx;
+                this.rotation += this.rotationSpeed;
+
+                if (this.bounces) {
+                    this.vy += 0.2; // gravity for bouncing blades
+                    this.y += this.vy;
+                    if (this.y + this.radius > groundY) {
+                        this.y = groundY - this.radius;
+                        this.vy = -Math.abs(this.vy) * 0.8; // bounce
+                    }
+                }
+
+                // Check collision with player
+                if (!player.dead) {
+                    const dx = (player.x + player.width/2) - this.x;
+                    const dy = (player.y + player.height/2) - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Simple circle-rect rough collision
+                    if (distance < this.radius + player.width/2 - 2) {
+                        player.die();
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                // Blade body
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#475569';
+                ctx.stroke();
+
+                // Teeth
+                ctx.fillStyle = '#cbd5e1';
+                for(let i=0; i<8; i++) {
+                    ctx.rotate((Math.PI * 2) / 8);
+                    ctx.beginPath();
+                    ctx.moveTo(this.radius - 2, -5);
+                    ctx.lineTo(this.radius + 6, 0);
+                    ctx.lineTo(this.radius - 2, 5);
+                    ctx.fill();
+                }
+                
+                // Center hole
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius/3, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e293b';
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            isOffscreen() {
+                return (this.x < -this.radius * 2 || this.x > width + this.radius * 2);
+            }
+        }
+
+        // --- 4. EFFECTS & PARTICLES ---
+        function createParticles(x, y, count, color) {
+            if(saveData.settings.particles === 'OFF') return;
+            let mult = saveData.settings.particles === 'LOW' ? 0.5 : 1;
+            
+            for(let i=0; i<count * mult; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10 - 2,
+                    life: 1.0,
+                    color: color,
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+
+        // --- 5. GAME LOGIC ---
+        function resetGame() {
+            player = new Player();
+            sawblades = [];
+            particles = [];
+            floatingTexts = [];
+            score = 0;
+            frames = 0;
+            difficultyMultiplier = 1;
+            updateHUD();
+        }
+
+        function spawnSawblade() {
+            if (frames % Math.max(20, Math.floor(60 - difficultyMultiplier * 10)) === 0) {
+                sawblades.push(new Sawblade());
+            }
+        }
+
+        function endGame() {
+            gameState = 'GAMEOVER';
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+            document.getElementById('finalScore').innerText = Math.floor(score);
+            
+            if (Math.floor(score) > saveData.highScore) {
+                saveData.highScore = Math.floor(score);
+                saveGame();
+                // Add floating text for new high score
+                floatingTexts.push({ x: width/2, y: height/3, text: "NEW HIGH SCORE!", color: "#fbbf24", life: 2.0 });
+            }
+            document.getElementById('goHighScore').innerText = saveData.highScore;
+        }
+
+        // --- 6. RENDERING & LOOP ---
+        function drawBackground() {
+            // Sky
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            // Stars
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(star => {
+                if(Math.random() < 0.01) star.blink = 10;
+                if(star.blink > 0) { star.blink--; ctx.globalAlpha = 0.2; } else { ctx.globalAlpha = star.color.split(',')[3].replace(')',''); }
+                ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            // Ground
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, groundY, width, height - groundY);
+            
+            // Grid line on ground
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(0, groundY, width, 2);
+        }
+
+        function drawGame() {
+            drawBackground();
+
+            // Draw Entities
+            if(gameState === 'PLAYING' || gameState === 'GAMEOVER') {
+                player.draw(ctx);
+                sawblades.forEach(sb => sb.draw(ctx));
+                
+                // Particles
+                particles.forEach(p => {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                });
+                ctx.globalAlpha = 1.0;
+
+                // Floating Texts
+                floatingTexts.forEach(ft => {
+                    ctx.globalAlpha = ft.life;
+                    ctx.fillStyle = ft.color;
+                    ctx.font = '16px "Press Start 2P"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(ft.text, ft.x, ft.y);
+                });
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function loop(timestamp) {
+            // Delta time calculation (optional, using fixed step for simplicity here)
+            
+            if (gameState === 'PLAYING') {
+                frames++;
+                score += 0.1;
+                difficultyMultiplier = 1 + (score / 500); // Increase difficulty over time
+
+                player.update();
+                spawnSawblade();
+
+                // Update blades
+                for (let i = sawblades.length - 1; i >= 0; i--) {
+                    sawblades[i].update();
+                    if (sawblades[i].isOffscreen()) sawblades.splice(i, 1);
+                }
+
+                // Update particles
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].x += particles[i].vx;
+                    particles[i].y += particles[i].vy;
+                    particles[i].vy += 0.5; // gravity
+                    particles[i].life -= 0.02;
+                    if (particles[i].life <= 0) particles.splice(i, 1);
+                }
+
+                // Update floating texts
+                for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                    floatingTexts[i].y -= 1;
+                    floatingTexts[i].life -= 0.02;
+                    if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+                }
+
+                if(frames % 10 === 0) updateHUD();
+            }
+
+            drawGame();
+            animationId = requestAnimationFrame(loop);
+        }
+
+        // --- 7. UI CONTROLS ---
+        function startGame() {
+            hideModals();
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            resetGame();
+            gameState = 'PLAYING';
+        }
+
+        function showMainMenu() {
+            gameState = 'MENU';
+            hideModals();
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            updateMenuStats();
+        }
+
+        function showSettings() {
+            hideModals();
+            document.getElementById('settingsModal').classList.remove('hidden');
+            updateSettingsUI();
+        }
+
+        function showChangelog() {
+            hideModals();
+            document.getElementById('changelogModal').classList.remove('hidden');
+        }
+
+        function hideModals() {
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('changelogModal').classList.add('hidden');
+        }
+
+        function updateHUD() {
+            document.getElementById('currentScore').innerText = Math.floor(score);
+            document.getElementById('hudHighScore').innerText = saveData.highScore;
+        }
+
+        function updateMenuStats() {
+            document.getElementById('menuHighScore').innerText = saveData.highScore;
+        }
+
+        // --- 8. SETTINGS LOGIC ---
+        function toggleMusic() {
+            saveData.settings.music = !saveData.settings.music;
+            saveGame(); updateSettingsUI();
+        }
+        function toggleSFX() {
+            saveData.settings.sfx = !saveData.settings.sfx;
+            saveGame(); updateSettingsUI();
+        }
+        function toggleParticles() {
+            const states = ['OFF', 'LOW', 'HIGH'];
+            let idx = states.indexOf(saveData.settings.particles);
+            idx = (idx + 1) % states.length;
+            saveData.settings.particles = states[idx];
+            saveGame(); updateSettingsUI();
+        }
+
+        function updateSettingsUI() {
+            document.getElementById('musicBtn').innerText = saveData.settings.music ? 'ON' : 'OFF';
+            document.getElementById('sfxBtn').innerText = saveData.settings.sfx ? 'ON' : 'OFF';
+            document.getElementById('particleBtn').innerText = saveData.settings.particles;
+        }
+
+        function wipeSave() {
+            if(confirm("Are you sure you want to wipe all local save data? This cannot be undone!")) {
+                localStorage.removeItem('sawbladesSave');
+                location.reload();
+            }
+        }
+
+        // --- 9. INITIALIZATION ---
+        window.onload = function() {
+            width = window.innerWidth; 
+            height = window.innerHeight; 
+            canvas.width = width; 
+            canvas.height = height; 
+            groundY = height - 50;
+
+            // Generate initial stars
+            stars.length = 0; 
+            for(let i=0; i<50; i++) {
+                stars.push({
+                    x: Math.random()*width, 
+                    y: Math.random()*height, 
+                    size: Math.random()*2+1, 
+                    color: `rgba(255,255,255,${Math.random()})`, 
+                    blink: Math.random()*100
+                });
+            }
+            
+            loadSave();
+            showMainMenu(); 
+            
+            // Start the main render loop
+            animationId = requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('resize', () => { 
+            width = window.innerWidth; 
+            height = window.innerHeight; 
+            canvas.width = width; 
+            canvas.height = height; 
+            groundY = height - 50; 
+        });
+
+        // Expose functions required by HTML inline event handlers
+        window.startGame = startGame;
+        window.showMainMenu = showMainMenu;
+        window.showSettings = showSettings;
+        window.showChangelog = showChangelog;
+        window.hideModals = hideModals;
+        window.toggleMusic = toggleMusic;
+        window.toggleSFX = toggleSFX;
+        window.toggleParticles = toggleParticles;
+        window.wipeSave = wipeSave;
+
+    </script>
+</body>
+</html>
