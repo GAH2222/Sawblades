@@ -3,28 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SAWBLADES (ONLINE)</title>
+    <title>SAWBLADES (SHEETS EDITION)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
-        body { margin: 0; background-color: #111; overflow: hidden; font-family: 'Press Start 2P', cursive; color: #f8fafc; user-select: none; -webkit-user-select: none; cursor: default; }
+        body {
+            margin: 0;
+            background-color: #111;
+            overflow: hidden;
+            font-family: 'Press Start 2P', cursive;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: default;
+        }
+
         canvas { display: block; image-rendering: pixelated; }
 
-        .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: 0.6; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 6px 100%; }
-        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85); z-index: 20; transition: opacity 0.2s; }
+        /* CRT EFFECT */
+        .scanlines {
+            position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: 0.6;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+        }
+
+        .overlay {
+            position: absolute; inset: 0; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85);
+            z-index: 20; transition: opacity 0.2s;
+        }
 
         /* MENU STYLES */
         .title-container { margin-top: 80px; margin-bottom: 1rem; text-align: center; animation: float 3s ease-in-out infinite; }
-        .main-title { font-size: 3.5rem; background: linear-gradient(180deg, #ef4444, #991b1b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 4px 4px 0px rgba(153, 27, 27, 0.5); margin-bottom: 0.5rem; letter-spacing: -2px; }
+        .main-title {
+            font-size: 3.5rem; background: linear-gradient(180deg, #ef4444, #991b1b);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-shadow: 4px 4px 0px rgba(153, 27, 27, 0.5); margin-bottom: 0.5rem; letter-spacing: -2px;
+        }
         .subtitle { font-size: 0.8rem; color: #fbbf24; letter-spacing: 2px; text-shadow: 2px 2px 0 #000; animation: blink 1s step-end infinite; }
+
         .menu-options { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: center; width: 600px; max-width: 90%; margin-bottom: 20px; }
         .menu-options button { width: 100%; }
         .full-width-btn { grid-column: span 2; }
         .menu-row { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
 
         /* BUTTONS */
-        .arcade-btn { background: #202028; border: 4px solid #4ade80; color: #4ade80; padding: 12px 10px; font-family: 'Press Start 2P', cursive; font-size: 0.8rem; cursor: pointer; text-transform: uppercase; box-shadow: 0 0 15px rgba(74, 222, 128, 0.2), inset 0 0 10px rgba(0,0,0,0.5); transition: all 0.1s; position: relative; text-align: center; }
+        .arcade-btn {
+            background: #202028; border: 4px solid #4ade80; color: #4ade80; padding: 12px 10px;
+            font-family: 'Press Start 2P', cursive; font-size: 0.8rem; cursor: pointer;
+            text-transform: uppercase; box-shadow: 0 0 15px rgba(74, 222, 128, 0.2), inset 0 0 10px rgba(0,0,0,0.5);
+            transition: all 0.1s; position: relative; text-align: center;
+        }
         .arcade-btn:hover { background: #4ade80; color: #000; box-shadow: 0 0 25px rgba(74, 222, 128, 0.6); transform: scale(1.05); z-index: 10; }
         .arcade-btn:active { transform: scale(0.95); }
         .arcade-btn.yellow { border-color: #fbbf24; color: #fbbf24; } .arcade-btn.yellow:hover { background: #fbbf24; color: #000; }
@@ -33,19 +64,26 @@
         .arcade-btn.purple { border-color: #a855f7; color: #a855f7; } .arcade-btn.purple:hover { background: #a855f7; color: #000; }
         .arcade-btn.small { padding: 8px; font-size: 0.7rem; min-width: auto; }
 
-        /* PROFILE */
-        .profile-bar { position: absolute; top: 20px; display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.9); padding: 10px 20px; border: 2px solid #555; z-index: 30; pointer-events: auto; }
+        /* PROFILE BAR */
+        .profile-bar {
+            position: absolute; top: 20px; display: flex; align-items: center; gap: 15px;
+            background: rgba(0,0,0,0.9); padding: 10px 20px; border: 2px solid #555; z-index: 30; pointer-events: auto;
+        }
         .profile-pfp { width: 40px; height: 40px; border: 2px solid #fff; background: #202028; image-rendering: pixelated; }
-        #player-name-input { background: transparent; border: none; border-bottom: 2px solid #555; color: #fff; font-family: 'Press Start 2P', cursive; font-size: 0.8rem; width: 150px; text-transform: uppercase; outline: none; }
+        
+        #player-name-input {
+            background: transparent; border: none; border-bottom: 2px solid #555;
+            color: #fff; font-family: 'Press Start 2P', cursive; font-size: 0.8rem;
+            width: 150px; text-transform: uppercase; outline: none;
+        }
         #player-name-input:focus { border-color: #fbbf24; }
-        .load-btn { font-size: 0.6rem; padding: 4px 8px; background: #333; border: 1px solid #666; color: #fff; cursor: pointer; margin-left: 10px; }
-        .load-btn:hover { background: #444; border-color: #fff; }
 
-        /* MODALS & GRIDS */
+        /* MODALS */
         .modal-container { background: #111; border: 4px solid #fff; padding: 20px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; text-align: center; position: relative; }
         .leaderboard-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; font-size: 0.8rem; }
         .leaderboard-row:nth-child(even) { background: #1a1a1a; }
         .leaderboard-row.gold { color: #fbbf24; border-bottom: 1px solid #fbbf24; }
+
         .skin-menu-container { background: #111; border: 4px solid #fff; padding: 20px; max-width: 600px; width: 90%; text-align: center; }
         .skin-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 20px 0; max-height: 300px; overflow-y: auto; padding: 10px; background: #000; border: 2px inset #333; }
         .skin-item { aspect-ratio: 1; border: 2px solid #333; cursor: pointer; position: relative; background: #111; transition: transform 0.1s; }
@@ -53,10 +91,10 @@
         .skin-item.selected { box-shadow: 0 0 0 2px white; z-index: 4; }
         .skin-item.locked { opacity: 0.3; cursor: not-allowed; }
 
-        /* RARITY */
-        .rarity-common { border-color: #9ca3af; } .rarity-uncommon { border-color: #22c55e; } .rarity-rare { border-color: #3b82f6; }
-        .rarity-epic { border-color: #a855f7; } .rarity-mythic { border-color: #ef4444; } .rarity-legendary { border-color: #fbbf24; animation: pulse-border 1s infinite; }
-        
+        /* RARITY COLORS */
+        .rarity-common { border-color: #9ca3af; } .rarity-uncommon { border-color: #22c55e; }
+        .rarity-rare { border-color: #3b82f6; } .rarity-epic { border-color: #a855f7; }
+        .rarity-mythic { border-color: #ef4444; } .rarity-legendary { border-color: #fbbf24; animation: pulse-border 1s infinite; }
         @keyframes pulse-border { 50% { border-color: #fff; } }
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
@@ -68,13 +106,15 @@
         #ui-layer { position: absolute; top: 20px; left: 20px; right: 20px; pointer-events: none; display: flex; justify-content: space-between; z-index: 10; font-size: 14px; text-shadow: 2px 2px 0 #000; }
         #time-container { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 300px; height: 24px; background: #000; border: 3px solid #fff; z-index: 10; }
         #time-fill { height: 100%; background: #fbbf24; width: 100%; }
+        
         #connection-status { position: absolute; bottom: 10px; right: 10px; font-size: 0.6rem; color: #666; z-index: 60; }
+        .status-ok { color: #22c55e !important; }
     </style>
 </head>
 <body>
 
     <div class="scanlines"></div>
-    <div id="connection-status">CONNECTED</div>
+    <div id="connection-status">LOCAL MODE (ADD URL)</div>
 
     <div id="ui-layer" class="hidden">
         <div style="color: #fbbf24;">🟡 <span id="hud-coins">0</span></div>
@@ -86,10 +126,7 @@
         <div class="profile-bar">
             <canvas id="menu-pfp-canvas" class="profile-pfp" width="32" height="32"></canvas>
             <div style="text-align: left;">
-                <div style="display:flex; align-items:center;">
-                    <input type="text" id="player-name-input" value="PLAYER" maxlength="12" onchange="window.updateName(this.value)">
-                    <button class="load-btn" onclick="window.fetchCloudData()" title="Load data for this name">LOAD</button>
-                </div>
+                <input type="text" id="player-name-input" value="PLAYER" maxlength="12" onchange="window.updateName(this.value)">
                 <div id="menu-rank-text" class="text-sm text-white font-bold">NOOB</div>
             </div>
             <div style="margin-left: 20px; text-align: right;">
@@ -150,7 +187,6 @@
     <div id="leaderboard-modal" class="overlay hidden">
         <div class="modal-container">
             <h2 class="text-2xl text-yellow-400 mb-6">GLOBAL LEADERBOARD</h2>
-            <div class="text-xs text-gray-500 mb-4">(TOP 50 PLAYERS)</div>
             <div id="leaderboard-list" style="margin-bottom: 20px;">Loading...</div>
             <button class="arcade-btn" onclick="window.showMainMenu()">CLOSE</button>
         </div>
@@ -158,14 +194,12 @@
 
     <div id="changelog-modal" class="overlay hidden">
         <div class="modal-container">
-            <h2 class="text-2xl text-green-400 mb-6">PATCH NOTES v1.5</h2>
+            <h2 class="text-2xl text-green-400 mb-6">PATCH NOTES v1.3</h2>
             <div style="text-align: left; font-family: monospace; color: #ccc; font-size: 0.8rem; line-height: 1.5;">
-                <p class="text-white mb-2">> BUG FIXES & ADDITIONS</p>
+                <p class="text-white mb-2">> CONNECTIVITY</p>
                 <ul class="list-disc pl-5 mb-4">
-                    <li>Gumball and Spin Wheel fully operational.</li>
-                    <li>Wipe Local Data is now completely functioning.</li>
-                    <li>Characters now occasionally do flips!</li>
-                    <li>Sawblades turn completely neon green when tagged.</li>
+                    <li>Added Google Sheets Integration Support.</li>
+                    <li>Added Input Box for Player Name.</li>
                 </ul>
             </div>
             <button class="arcade-btn mt-4" onclick="window.showMainMenu()">CLOSE</button>
@@ -182,7 +216,7 @@
 
     <div id="gumball-ui" class="overlay hidden" style="background: transparent; pointer-events: none;">
         <div class="gumball-ui-container">
-             <button id="gumball-btn" class="arcade-btn red" onclick="window.turnKnob()">TURN KNOB</button>
+             <button id="gumball-btn" class="arcade-btn red" onclick="window.turnKnob()">TURN </button>
              <button id="gumball-back-btn" class="arcade-btn" onclick="window.showMainMenu()">EXIT</button>
         </div>
     </div>
@@ -193,7 +227,7 @@
         </div>
     </div>
     <div id="prize-reveal" class="overlay hidden">
-        <div class="skin-menu-container" style="max-width: 400px; z-index: 100;">
+        <div class="skin-menu-container" style="max-width: 400px;">
             <h2 class="text-yellow-400 mb-6 text-xl">UNLOCKED!</h2>
             <div style="width: 96px; height: 96px; margin: 0 auto 20px; background: #202028; border: 4px solid #fff; display: flex; align-items: center; justify-content: center;">
                 <canvas id="prizeCanvas" width="32" height="32" style="width: 96px; height: 96px; image-rendering: pixelated;"></canvas>
@@ -223,9 +257,6 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        /**
-         * GOOGLE SHEETS CONFIGURATION
-         */
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyfaFxogrAw3yoN8Eji-RF4OLGY8DAOh_wRhGYztL1q2gw4-pLTaNFINlp7LUC8IZjgbg/exec"; 
 
         // --- 1. GLOBALS & CONFIG ---
@@ -261,18 +292,16 @@
         let jumpCount = 0, globalTick = 0;
         let earnedCoins = 0;
 
-        // Note the added angle and targetAngle properties for flips
-        const player = { x: 0, y: 0, w: 32, h: 32, vx: 0, vy: 0, speed: 7.0, jump: -15, gravity: 0.6, grounded: false, angle: 0, targetAngle: 0, trail: [] };
+        const player = { x: 0, y: 0, w: 32, h: 32, vx: 0, vy: 0, speed: 7.0, jump: -15, gravity: 0.6, grounded: false, angle: 0, trail: [] };
         let blades = []; let particles = []; let items = []; let floatingTexts = []; const stars = [];
-        let gumball = { state: 'idle', timer: 0, knobAngle: 0, ballColors: ['#ef4444', '#3b82f6', '#22c55e', '#fbbf24', '#a855f7'] };
-        let wheel = { angle: 0, velocity: 0, state: 'idle' };
+        let gumball = { state: 'idle', timer: 0, knobAngle: 0, balls: [], droppedBall: null };
+        let wheel = { angle: 0, velocity: 0, state: 'idle', result: null };
         const keys = {};
 
-        // Music Loop
         let nextNoteTime = 0;
         let noteIndex = 0;
         const melody = [220, 0, 261, 0, 329, 0, 261, 0];
-        function scheduleAudio() {
+        window.scheduleAudio = function() {
             if(currentState !== GAME_STATE.PLAYING) return;
             while (nextNoteTime < audioCtx.currentTime + 0.1) {
                 const freq = melody[noteIndex % melody.length];
@@ -289,11 +318,10 @@
         }
 
         // --- 2. DATA CONSTANTS & SAVE ---
-        const SAVE_KEY = 'sawblades_save_v1_2';
+        const SAVE_KEY = 'sawblades_save_v1_1';
         const DEFAULT_SAVE = { profile: { name: "PLAYER", skin: "default" }, economy: { coins: 0, gumballCount: 0, wheelCount: 0 }, inventory: { skins: ["default"], bgs: ["default"] }, stats: { highScore: 0 }, settings: { bg: "default" }, leaderboard: [] };
         let saveData = JSON.parse(localStorage.getItem(SAVE_KEY)) || JSON.parse(JSON.stringify(DEFAULT_SAVE));
 
-        // [CONSTANTS]
         const RANKS = [ { min: 0, name: "FRESH MEAT", color: "#71717a", icon: "🥩" }, { min: 10, name: "RUSTY BOLT", color: "#a1a1aa", icon: "🔩" }, { min: 25, name: "SCRAP RAT", color: "#94a3b8", icon: "🐀" }, { min: 50, name: "GEAR GRINDER", color: "#cbd5e1", icon: "⚙" }, { min: 75, name: "STEEL SURVIVOR", color: "#ca8a04", icon: "🛡️" }, { min: 100, name: "BLADE RUNNER", color: "#facc15", icon: "🏃" }, { min: 150, name: "NEON DRIFTER", color: "#22d3ee", icon: "🏎️" }, { min: 175, name: "CYBER PUNK", color: "#67e8f9", icon: "🕶️" }, { min: 200, name: "SAWBLADE SAINT", color: "#4ade80", icon: "🙏" }, { min: 300, name: "TIME BENDER", color: "#a855f7", icon: "⏳" }, { min: 400, name: "REALITY HACKER", color: "#f472b6", icon: "💻" }, { min: 500, name: "SYSTEM ANOMALY", color: "#ef4444", icon: "⚠️" }, { min: 750, name: "BINARY GOD", color: "#3b82f6", icon: "0️⃣1️⃣" }, { min: 1000, name: "THE DEVELOPER", color: "#f00", icon: "👨‍💻" } ];
         const RARITY = { COMMON: { color: '#9ca3af', weight: 40 }, UNCOMMON: { color: '#22c55e', weight: 30 }, RARE: { color: '#3b82f6', weight: 15 }, EPIC: { color: '#a855f7', weight: 9 }, MYTHIC: { color: '#ef4444', weight: 5 }, LEGENDARY: { color: '#fbbf24', weight: 1 } };
         const SKINS = { 'default': { name: 'CLASSIC RED', color: '#ef4444', rarity: 'common' }, 'blue': { name: 'BLUE BLOCK', color: '#3b82f6', rarity: 'common' }, 'green': { name: 'GREEN BLOCK', color: '#22c55e', rarity: 'common' }, 'yellow': { name: 'YELLOW BLOCK', color: '#eab308', rarity: 'common' }, 'purple': { name: 'PURPLE BLOCK', color: '#a855f7', rarity: 'common' }, 'white': { name: 'GHOST WHITE', color: '#f3f4f6', rarity: 'common' }, 'gray': { name: 'SLATE GRAY', color: '#6b7280', rarity: 'common' }, 'orange': { name: 'ORANGE BLOCK', color: '#f97316', rarity: 'common' }, 'pink': { name: 'PINK BLOCK', color: '#fb7185', rarity: 'common' }, 'teal': { name: 'TEAL BLOCK', color: '#14b8a6', rarity: 'common' }, 'stripe_h': { name: 'HORIZON', color: '#ef4444', type: 'stripe_h', rarity: 'uncommon' }, 'stripe_v': { name: 'PRISONER', color: '#fff', type: 'stripe_v', rarity: 'uncommon' }, 'checkers': { name: 'RACE FLAG', color: '#fff', type: 'checkers', rarity: 'uncommon' }, 'target': { name: 'TARGET', color: '#ef4444', type: 'target', rarity: 'uncommon' }, 'creeper': { name: 'BOOM', color: '#22c55e', type: 'face_creeper', rarity: 'uncommon' }, 'smile': { name: 'HAPPY', color: '#eab308', type: 'face_smile', rarity: 'uncommon' }, 'boxer': { name: 'BOXER', color: '#fca5a5', type: 'headband', rarity: 'uncommon' }, 'bandit': { name: 'BANDIT', color: '#94a3b8', type: 'mask', rarity: 'uncommon' }, 'dark': { name: 'SHADOW', color: '#111', type: 'eyes_red', rarity: 'uncommon' }, 'gold_trim': { name: 'FANCY', color: '#444', type: 'gold_border', rarity: 'uncommon' }, 'ninja': { name: 'SHINOBI', color: '#171717', type: 'ninja', rarity: 'rare' }, 'robot': { name: 'BOT-01', color: '#94a3b8', type: 'robot', rarity: 'rare' }, 'slime': { name: 'GOO', color: '#a3e635', type: 'slime', rarity: 'rare' }, 'pumpkin': { name: 'JACK', color: '#f97316', type: 'pumpkin', rarity: 'rare' }, 'soldier': { name: 'MARINE', color: '#3f6212', type: 'helmet', rarity: 'rare' }, 'diver': { name: 'DEEP SEA', color: '#eab308', type: 'diver', rarity: 'rare' }, 'tv': { name: 'TV HEAD', color: '#3b82f6', type: 'tv', rarity: 'rare' }, 'amogus': { name: 'SUS', color: '#ef4444', type: 'visor', rarity: 'rare' }, 'king': { name: 'THE KING', color: '#eab308', type: 'king', rarity: 'epic' }, 'knight': { name: 'PALADIN', color: '#cbd5e1', type: 'knight', rarity: 'epic' }, 'cyborg': { name: 'CYBORG', color: '#475569', type: 'cyborg', rarity: 'epic' }, 'demon': { name: 'ONI', color: '#991b1b', type: 'demon', rarity: 'epic' }, 'angel': { name: 'SERAPH', color: '#fff', type: 'angel', rarity: 'epic' }, 'solar': { name: 'SOLAR', color: '#f97316', type: 'solar', rarity: 'mythic' }, 'nebula': { name: 'NEBULA', color: '#6366f1', type: 'nebula', rarity: 'mythic' }, 'matrix': { name: 'THE ONE', color: '#000', type: 'matrix', rarity: 'mythic' }, 'glitch': { name: 'MISSINGNO', color: '#000', type: 'glitch', rarity: 'legendary' }, 'plumbous': { name: 'PLUMBOUS', color: '#fbbf24', type: 'plumbous', rarity: 'common' }, 'markian': { name: 'MARKIAN', color: '#fff1f2', type: 'markian', rarity: 'rare' }, 'talia': { name: 'TALIA', color: '#fdba74', type: 'talia', rarity: 'common' }, 'diaper_dog': { name: 'DIAPER DOG', color: '#a16207', type: 'dog', rarity: 'common' }, 'nick': { name: 'NICK', color: '#000', type: 'nick', rarity: 'rare' }, 'walter': { name: 'WALTER', color: '#1e40af', type: 'walter', rarity: 'rare' }, 'thomas': { name: 'THOMAS', color: '#ffe0bd', type: 'thomas', rarity: 'rare' }, 'husband': { name: 'LYDIAS HUSBAND', color: '#fca5a5', type: 'husband', rarity: 'epic' }, 'candella': { name: 'CANDELLA', color: '#d97706', type: 'candella', rarity: 'epic' }, 'basic': { name: 'REID/JACK', color: '#fca5a5', type: 'basic', rarity: 'epic' }, 'sam_kim': { name: 'SAM KIM', color: '#854d0e', type: 'sam_kim', rarity: 'epic' }, 'wilks': { name: 'WILKS', color: '#fca5a5', type: 'wilks', rarity: 'mythic' }, 'curry': { name: 'CURRY', color: '#fff', type: 'curry', rarity: 'legendary' }, 'jcsmp_king': { name: 'JCSMP KING', color: '#fbbf24', type: 'jcsmp_king', rarity: 'legendary' } };
@@ -306,242 +334,252 @@
         function saveGame() {
             localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
             if (GOOGLE_SCRIPT_URL) {
-                const payload = { action: "saveData", userId: saveData.profile.name, data: saveData };
-                fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
+                const payload = {
+                    action: "saveData",
+                    userId: getUserId(),
+                    data: saveData
+                };
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                }).then(() => console.log("Cloud Saved")).catch(e => console.log("Cloud Error", e));
             }
         }
-
-        window.fetchCloudData = function() {
-            if(!GOOGLE_SCRIPT_URL) return;
-            const name = document.getElementById('player-name-input').value.toUpperCase();
-            document.getElementById('connection-status').innerText = "LOADING...";
-            
-            fetch(GOOGLE_SCRIPT_URL + "?action=loadData&userId=" + name)
-            .then(res => res.json())
-            .then(data => {
-                if(data && data.success) {
-                    saveData = data.data; saveGame(); window.updateMenuUI();
-                    alert("Data Loaded for " + name);
-                } else {
-                    alert("No save found for " + name + ". Starting fresh.");
-                    saveData.profile.name = name; window.updateMenuUI();
-                }
-                document.getElementById('connection-status').innerText = "ONLINE";
-            })
-            .catch(e => {
-                alert("Could not load data. Check internet.");
-                document.getElementById('connection-status').innerText = "ERROR";
-            });
+        
+        function getUserId() {
+            let uid = localStorage.getItem("sawblades_uid");
+            if (!uid) { uid = "user_" + Math.random().toString(36).substr(2, 9); localStorage.setItem("sawblades_uid", uid); }
+            return uid;
         }
 
         window.submitScoreCloud = function(score) {
             if (GOOGLE_SCRIPT_URL) {
-                const payload = { action: "submitScore", name: saveData.profile.name, score: score, rank: getRankData(score).name, skin: saveData.profile.skin };
-                fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
+                const payload = {
+                    action: "submitScore",
+                    name: saveData.profile.name,
+                    score: score,
+                    rank: getRankData(score).name
+                };
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                }).catch(e => console.log("Score Error", e));
             }
         }
 
         window.fetchLeaderboardCloud = function() {
-            const list = document.getElementById('leaderboard-list'); list.innerHTML = 'Loading...';
-            if (!GOOGLE_SCRIPT_URL) { list.innerHTML = `<div class="text-gray-500">Offline Mode</div>`; return; }
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = 'Loading...';
+            
+            if (!GOOGLE_SCRIPT_URL) {
+                list.innerHTML = `<div class="leaderboard-row gold"><span>#1 ${saveData.profile.name}</span><span>${saveData.stats.highScore}</span></div><div style="padding:10px; color:#666;">(Add Google Script URL for Online)</div>`;
+                return;
+            }
 
             fetch(GOOGLE_SCRIPT_URL + "?action=getLeaderboard")
             .then(res => res.json())
             .then(data => {
                 list.innerHTML = '';
-                data.slice(0,50).forEach((s, i) => {
-                    const div = document.createElement('div'); div.className = `leaderboard-row ${i===0 ? 'gold' : ''}`;
-                    div.innerHTML = `<span>#${i+1} ${s.name.substring(0,10)}</span><span>${s.score} <span style="font-size:0.6rem; color:#888;">${s.rank}</span></span>`;
+                data.forEach((s, i) => {
+                    const div = document.createElement('div');
+                    div.className = `leaderboard-row ${i===0 ? 'gold' : ''}`;
+                    div.innerHTML = `<span>#${i+1} ${s.name}</span><span>${s.score} <span style="font-size:0.6rem; color:#888;">${s.rank}</span></span>`;
                     list.appendChild(div);
                 });
             })
-            .catch(e => { list.innerHTML = 'Error loading.'; console.error(e); });
+            .catch(e => {
+                list.innerHTML = 'Error loading leaderboard.';
+                console.error(e);
+            });
         }
 
         // --- CORE ---
-        function getRankData(score) { for (let i = RANKS.length - 1; i >= 0; i--) if (score >= RANKS[i].min) return RANKS[i]; return RANKS[0]; }
-        function getGumballCost() { return 5 + Math.floor(saveData.economy.gumballCount / 2) * 5; }
-        function getWheelCost() { return 5 + Math.floor(saveData.economy.wheelCount / 2) * 5; }
-        function renderRank(elementId, score) { const rank = getRankData(score); const el = document.getElementById(elementId); if(el) el.innerHTML = `<span class="rank-icon">${rank.icon}</span><span style="color: ${rank.color}; ${rank.css || ''}">${rank.name}</span>`; }
-        function renderPfp() { menuPfpCtx.clearRect(0,0,32,32); window.drawSkin(menuPfpCtx, 0, 0, 32, saveData.profile.skin, 0); }
-        
-        window.updateName = function(val) { saveData.profile.name = val.toUpperCase(); saveGame(); }
-        
-        // FIXED WIPE SAVE FUNCTION
-        window.wipeSave = function() { 
-            if(confirm("Are you sure you want to completely wipe your local data? This cannot be undone.")) { 
-                localStorage.removeItem(SAVE_KEY); // Explicitly remove key
-                saveData = JSON.parse(JSON.stringify(DEFAULT_SAVE)); // Reset
-                location.reload(); // Reload
-            } 
+        function getRankData(score) {
+            for (let i = RANKS.length - 1; i >= 0; i--) if (score >= RANKS[i].min) return RANKS[i];
+            return RANKS[0];
         }
 
-        // --- MINIGAME LOGIC (GUMBALL & WHEEL) ---
-        window.rollPrize = function(pool, unlockedList) {
-            let available = Object.keys(pool).filter(k => !unlockedList.includes(k));
-            if(available.length === 0) return { id: 'coins', name: '50 COINS', rarity: 'common', type: 'currency' };
-            let totalWeight = available.reduce((sum, k) => sum + (RARITY[pool[k].rarity.toUpperCase()].weight || 10), 0);
-            let r = Math.random() * totalWeight;
-            for(let k of available) {
-                let w = RARITY[pool[k].rarity.toUpperCase()].weight || 10;
-                if(r < w) return { id: k, ...pool[k] };
-                r -= w;
-            }
-            return { id: available[0], ...pool[available[0]] };
-        };
+        function getGumballCost() { return 5 + Math.floor(saveData.economy.gumballCount / 2) * 5; }
+        function getWheelCost() { return 5 + Math.floor(saveData.economy.wheelCount / 2) * 5; }
 
+        function renderRank(elementId, score) {
+            const rank = getRankData(score);
+            const el = document.getElementById(elementId);
+            if(el) el.innerHTML = `<span class="rank-icon">${rank.icon}</span><span style="color: ${rank.color}; ${rank.css || ''}">${rank.name}</span>`;
+        }
+
+        function renderPfp() {
+            menuPfpCtx.clearRect(0,0,32,32);
+            window.drawSkin(menuPfpCtx, 0, 0, 32, saveData.profile.skin, 0);
+        }
+
+        window.updateName = function(newName) {
+            if(newName && newName.length <= 12) {
+                saveData.profile.name = newName.toUpperCase();
+                saveGame();
+            } else {
+                alert("Name max 12 chars.");
+                document.getElementById('player-name-input').value = saveData.profile.name;
+            }
+        }
+
+        window.editProfile = function() {
+             document.getElementById('player-name-input').focus();
+        }
+
+        window.wipeSave = function() {
+            if(confirm("Are you sure?")) { localStorage.removeItem(SAVE_KEY); location.reload(); }
+        }
+
+        // --- MINIGAME LOGIC (Gumball & Wheel) ---
         window.startGumball = function() {
-            if(saveData.economy.coins < getGumballCost()) { alert("NOT ENOUGH COINS!"); return; }
+            if (currentState !== GAME_STATE.MENU) return;
             currentState = GAME_STATE.GUMBALL;
             document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
             document.getElementById('gumball-ui').classList.remove('hidden');
             gumball.state = 'idle'; gumball.knobAngle = 0; gumball.timer = 0;
-        }
+        };
 
         window.turnKnob = function() {
-            if(gumball.state !== 'idle') return;
-            let cost = getGumballCost();
-            if(saveData.economy.coins < cost) return;
-            saveData.economy.coins -= cost; saveData.economy.gumballCount++;
-            saveGame(); window.updateMenuUI();
-            gumball.state = 'turning'; playSound('click');
-        }
+            const cost = getGumballCost();
+            if (saveData.economy.coins >= cost && gumball.state === 'idle') {
+                saveData.economy.coins -= cost;
+                saveData.economy.gumballCount++;
+                saveGame(); window.updateMenuUI();
+                gumball.state = 'turning'; gumball.timer = 0;
+                playSound('click');
+            } else if (saveData.economy.coins < cost) {
+                alert("NOT ENOUGH COINS!");
+            }
+        };
 
         window.updateAndDrawGumball = function() {
-            ctx.fillStyle = '#111'; ctx.fillRect(0,0,width,height);
-            const cx = width/2; const cy = height/2;
+            ctx.fillStyle = '#111'; ctx.fillRect(0, 0, width, height);
+            stars.forEach(s => { s.blink++; if(Math.sin(s.blink * 0.1) > 0) { ctx.fillStyle = s.color; ctx.fillRect(s.x, s.y, s.size, s.size); } });
             
-            // Draw Machine Background
-            ctx.fillStyle = '#ef4444'; ctx.fillRect(cx - 50, cy, 100, 120);
-            ctx.fillStyle = '#b91c1c'; ctx.fillRect(cx - 50, cy + 100, 100, 20); // base
+            ctx.save(); ctx.translate(width / 2, height / 2);
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(-60, 20, 120, 100);
+            ctx.fillStyle = '#991b1b'; ctx.fillRect(-50, 100, 100, 20);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath(); ctx.arc(0, -50, 70, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
             
-            // Draw Globe
-            ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(cx, cy - 20, 70, 0, Math.PI*2); ctx.fill();
-            
-            // Draw internal gumballs
-            for(let i=0; i<15; i++) {
-                ctx.fillStyle = gumball.ballColors[i % gumball.ballColors.length];
-                ctx.beginPath(); ctx.arc(cx - 40 + (i*17)%80, cy - 50 + (i*13)%60, 12, 0, Math.PI*2); ctx.fill();
-            }
-            
-            // Draw Glass highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.arc(cx - 20, cy - 40, 30, 0, Math.PI*2); ctx.fill();
-
-            // Draw Knob
-            ctx.save();
-            ctx.translate(cx, cy + 40);
-            ctx.rotate(gumball.knobAngle);
-            ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#475569'; ctx.fillRect(-2, -15, 4, 30);
-            ctx.restore();
-
-            if(gumball.state === 'turning') {
-                gumball.knobAngle += 0.15;
-                if(gumball.knobAngle > Math.PI*2) { gumball.state = 'dropping'; gumball.knobAngle = 0; gumball.timer = 0; playSound('tick'); }
-            } else if(gumball.state === 'dropping') {
-                gumball.timer++;
-                // Dropped ball
-                ctx.fillStyle = gumball.ballColors[0];
-                ctx.beginPath(); ctx.arc(cx, cy + 80 + gumball.timer*2, 12, 0, Math.PI*2); ctx.fill();
-                if(gumball.timer > 20) {
-                    gumball.state = 'done';
-                    let prize = rollPrize(SKINS, saveData.inventory.skins);
-                    window.showPrize(prize, 'skin');
+            ctx.save(); ctx.translate(0, 60);
+            if (gumball.state === 'turning') {
+                gumball.knobAngle += 0.1;
+                if (gumball.knobAngle >= Math.PI * 2) {
+                    gumball.state = 'dropping'; gumball.timer = 0; gumball.knobAngle = 0; playSound('coin');
                 }
             }
-        }
+            ctx.rotate(gumball.knobAngle);
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-15, -5, 30, 10); ctx.fillRect(-5, -15, 10, 30);
+            ctx.restore();
+
+            if (gumball.state === 'dropping') {
+                gumball.timer++; let dropY = 60 + gumball.timer * 2;
+                ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(0, dropY, 15, 0, Math.PI * 2); ctx.fill();
+                if (gumball.timer > 40) { gumball.state = 'idle'; grantRandomPrize(true); }
+            }
+            ctx.restore();
+        };
 
         window.startWheel = function() {
-            if(saveData.economy.coins < getWheelCost()) { alert("NOT ENOUGH COINS!"); return; }
+            if (currentState !== GAME_STATE.MENU) return;
             currentState = GAME_STATE.WHEEL;
             document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
             document.getElementById('wheel-ui').classList.remove('hidden');
-            wheel.state = 'idle'; wheel.angle = 0; wheel.velocity = 0;
-        }
+            wheel.state = 'idle';
+        };
 
         window.spinWheel = function() {
-            if(wheel.state !== 'idle') return;
-            let cost = getWheelCost();
-            if(saveData.economy.coins < cost) return;
-            saveData.economy.coins -= cost; saveData.economy.wheelCount++;
-            saveGame(); window.updateMenuUI();
-            wheel.state = 'spinning'; wheel.velocity = 0.4 + Math.random() * 0.2; playSound('jump');
-        }
+            const cost = getWheelCost();
+            if (saveData.economy.coins >= cost && wheel.state === 'idle') {
+                saveData.economy.coins -= cost;
+                saveData.economy.wheelCount++;
+                saveGame(); window.updateMenuUI();
+                wheel.state = 'spinning'; wheel.velocity = Math.random() * 0.2 + 0.3;
+                playSound('jump');
+            } else if (saveData.economy.coins < cost) {
+                alert("NOT ENOUGH COINS!");
+            }
+        };
 
         window.updateAndDrawWheel = function() {
-            ctx.fillStyle = '#111'; ctx.fillRect(0,0,width,height);
-            const cx = width/2; const cy = height/2;
+            ctx.fillStyle = '#111'; ctx.fillRect(0, 0, width, height);
+            stars.forEach(s => { s.blink++; if(Math.sin(s.blink * 0.1) > 0) { ctx.fillStyle = s.color; ctx.fillRect(s.x, s.y, s.size, s.size); } });
             
-            ctx.save();
-            ctx.translate(cx, cy);
+            ctx.save(); ctx.translate(width / 2, height / 2 - 50);
+            if (wheel.state === 'spinning') {
+                wheel.velocity *= 0.99; wheel.angle += wheel.velocity;
+                if (wheel.velocity < 0.002) { wheel.state = 'idle'; wheel.velocity = 0; playSound('coin'); grantRandomPrize(false); }
+            }
+            
             ctx.rotate(wheel.angle);
-            // Draw Wheel segments
-            for(let i=0; i<8; i++) {
-                ctx.fillStyle = i % 2 === 0 ? '#fbbf24' : '#f59e0b';
-                ctx.beginPath();
-                ctx.moveTo(0,0); ctx.arc(0,0, 120, i * Math.PI/4, (i+1) * Math.PI/4);
-                ctx.fill();
-                ctx.fillStyle = '#000'; ctx.stroke();
+            const segments = 8;
+            for (let i = 0; i < segments; i++) {
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 120, i * (Math.PI * 2 / segments), (i + 1) * (Math.PI * 2 / segments));
+                ctx.fillStyle = i % 2 === 0 ? '#ef4444' : '#fbbf24'; ctx.fill(); ctx.stroke();
             }
             ctx.restore();
             
-            // Pointer
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath(); ctx.moveTo(cx, cy - 130); ctx.lineTo(cx - 15, cy - 150); ctx.lineTo(cx + 15, cy - 150); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.beginPath();
+            ctx.moveTo(width / 2, height / 2 - 180); ctx.lineTo(width / 2 - 15, height / 2 - 195); ctx.lineTo(width / 2 + 15, height / 2 - 195); ctx.fill();
+        };
 
-            if(wheel.state === 'spinning') {
-                wheel.angle += wheel.velocity;
-                wheel.velocity *= 0.985; // Friction
-                if(wheel.velocity < 0.002) {
-                    wheel.state = 'done'; playSound('coin');
-                    let prize = rollPrize(BACKGROUNDS, saveData.inventory.bgs);
-                    window.showPrize(prize, 'bg');
-                }
-            }
-        }
-
-        window.showPrize = function(prize, type) {
-            document.getElementById('prize-reveal').classList.remove('hidden');
-            document.getElementById('gumball-ui').classList.add('hidden');
-            document.getElementById('wheel-ui').classList.add('hidden');
+        function grantRandomPrize(isGumball) {
+            const isSkin = Math.random() > 0.3; 
+            const pool = isSkin ? Object.keys(SKINS) : Object.keys(BACKGROUNDS);
+            const unlocked = isSkin ? saveData.inventory.skins : saveData.inventory.bgs;
+            const lockedPool = pool.filter(item => !unlocked.includes(item));
             
-            document.getElementById('prize-name').innerText = prize.name;
-            const rarityEl = document.getElementById('prize-rarity');
-            rarityEl.innerText = prize.rarity;
-            rarityEl.style.color = RARITY[prize.rarity.toUpperCase()].color;
+            let prizeId, prizeName, prizeRarity, isDuplicate = false;
+            
+            if (lockedPool.length > 0) {
+                prizeId = lockedPool[Math.floor(Math.random() * lockedPool.length)];
+                unlocked.push(prizeId);
+                saveGame();
+            } else {
+                prizeId = pool[Math.floor(Math.random() * pool.length)];
+                isDuplicate = true; saveData.economy.coins += 25; saveGame();
+            }
+            
+            const itemDef = isSkin ? SKINS[prizeId] : BACKGROUNDS[prizeId];
+            prizeName = isDuplicate ? itemDef.name + " (DUP! +25🟡)" : itemDef.name;
+            prizeRarity = itemDef.rarity;
+            
+            document.getElementById('prize-name').innerText = prizeName;
+            document.getElementById('prize-rarity').innerText = prizeRarity.toUpperCase();
+            document.getElementById('prize-rarity').className = `text-xs mb-8 uppercase tracking-widest rarity-${prizeRarity}`;
             
             prizeCtx.clearRect(0,0,32,32);
-            if(prize.id === 'coins') {
-                prizeCtx.fillStyle = '#fbbf24'; prizeCtx.beginPath(); prizeCtx.arc(16,16,10,0,Math.PI*2); prizeCtx.fill();
-                saveData.economy.coins += 50;
-            } else if(type === 'skin') {
-                window.drawSkin(prizeCtx, 0, 0, 32, prize.id, 0);
-                saveData.inventory.skins.push(prize.id);
-            } else {
-                prizeCtx.fillStyle = prize.color; prizeCtx.fillRect(0,0,32,32);
-                saveData.inventory.bgs.push(prize.id);
-            }
-            saveGame(); window.updateMenuUI();
+            if (isSkin) window.drawSkin(prizeCtx, 0, 0, 32, prizeId, 0);
+            else { prizeCtx.fillStyle = itemDef.color; prizeCtx.fillRect(0,0,32,32); }
+            
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+            document.getElementById('prize-reveal').classList.remove('hidden');
         }
 
         window.closePrize = function() {
-            document.getElementById('prize-reveal').classList.add('hidden');
-            window.showMainMenu();
-        }
+            document.getElementById('prize-reveal').classList.add('hidden'); window.showMainMenu();
+        };
 
         // --- DRAWING ---
-        window.createParticles = function(x, y, color, count) { for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color }); }
-        window.spawnBlade = function() { const size = 64; const x = Math.random() * (width - size); const dir = Math.random() > 0.5 ? 1 : -1; const rotSpeed = dir * (0.1 + Math.random() * 0.5); blades.push({ x, y: -size - 20, size, vx: (Math.random() - 0.5) * 12, vy: 7.5, rot: Math.random() * 6.28, rotSpeed: rotSpeed, tagged: false, trail: [] }); }
-        
-        window.handleJump = function() { 
-            if (player.grounded) { 
-                playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; 
-                if(Math.random() < 0.3) player.targetAngle += Math.PI * 2; // 30% chance to flip
-            } else if (jumpCount < 2) { 
-                playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; 
-                window.createParticles(player.x + 16, player.y + 16, '#fff', 5); 
-                if(Math.random() < 0.3) player.targetAngle += Math.PI * 2; // 30% chance to flip
-            } 
+        window.createParticles = function(x, y, color, count) {
+            for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color });
+        }
+
+        window.spawnBlade = function() {
+            const size = 64; const x = Math.random() * (width - size); const dir = Math.random() > 0.5 ? 1 : -1; const rotSpeed = dir * (0.1 + Math.random() * 0.5); 
+            blades.push({ x, y: -size - 20, size, vx: (Math.random() - 0.5) * 12, vy: 7.5, rot: Math.random() * 6.28, rotSpeed: rotSpeed, tagged: false, trail: [] });
+        }
+
+        window.handleJump = function() {
+            if (player.grounded) { playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; }
+            else if (jumpCount < 2) { playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; window.createParticles(player.x + 16, player.y + 16, '#fff', 5); }
         }
 
         window.drawBackground = function(ctx, width, height, tick) {
@@ -561,6 +599,7 @@
             if(skin.type === 'solar') { ctx.shadowBlur = 10; ctx.shadowColor = '#f97316'; } if(skin.type === 'nebula') { ctx.shadowBlur = 10; ctx.shadowColor = '#d946ef'; }
             if(skin.type === 'matrix') { ctx.strokeStyle = '#0f0'; ctx.lineWidth = 1; ctx.strokeRect(0,0,s,s); }
             ctx.fillStyle = skin.color; ctx.fillRect(0, 0, s, s); ctx.shadowBlur = 0;
+
             if(skin.type === 'curry') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#166534'; ctx.font = '10px monospace'; ctx.fillText('22', 8, 20); ctx.strokeStyle = '#999'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(28, 10); ctx.lineTo(36, -10); ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(36, -10, 4, 0, Math.PI*2); ctx.stroke(); }
             else if(skin.type === 'wilks') { ctx.fillStyle = '#dcb28b'; ctx.fillRect(0,0,s,s); ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(4, 12, 10, 8); ctx.fillRect(18, 12, 10, 8); ctx.fillRect(10, 22, 12, 8); ctx.fillStyle = '#000'; ctx.fillRect(10,6,4,2); ctx.fillRect(18,6,4,2); ctx.fillRect(12,10,8,2); }
             else if(skin.type === 'plumbous') { ctx.save(); ctx.translate(4,4); ctx.scale(0.8, 0.8); ctx.fillStyle = '#fbbf24'; ctx.fillRect(0,0,s,s); ctx.fillStyle = '#000'; ctx.fillRect(4,6,6,6); ctx.fillRect(14,6,6,6); ctx.fillRect(24,6,4,6); ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(8, 28, 4, 0, Math.PI*2); ctx.arc(24, 28, 4, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
@@ -580,112 +619,21 @@
             ctx.restore();
         };
 
-        window.drawGame = function() {
-            // Draw Ground
-            ctx.fillStyle = '#222'; ctx.fillRect(0, groundY, width, height - groundY);
-            ctx.fillStyle = '#4ade80'; ctx.fillRect(0, groundY, width, 4);
-
-            // Draw Player Trail
-            player.trail.forEach((t, i) => {
-                ctx.globalAlpha = 1 - (i / player.trail.length);
-                ctx.fillStyle = t.color;
-                ctx.save();
-                ctx.translate(t.x + player.w/2, t.y + player.h/2);
-                ctx.rotate(t.angle);
-                ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
-                ctx.restore();
-            });
-            ctx.globalAlpha = 1.0;
-
-            // Draw Items (Coins/Powerups)
-            items.forEach(it => {
-                ctx.fillStyle = '#fbbf24'; ctx.beginPath();
-                ctx.arc(it.x, it.y, 8 + Math.sin(it.pulse)*2, 0, Math.PI*2); ctx.fill();
-            });
-
-            // Draw Player with Rotation Interpolation
-            ctx.save();
-            ctx.translate(player.x + player.w/2, player.y + player.h/2);
-            ctx.rotate(player.angle);
-            window.drawSkin(ctx, -player.w/2, -player.h/2, player.w, saveData.profile.skin, globalTick);
-            ctx.restore();
-
-            // Draw Blades
-            blades.forEach(b => {
-                ctx.save();
-                ctx.translate(b.x + b.size/2, b.y + b.size/2);
-                ctx.rotate(b.rot);
-                
-                // Neon Green fill if tagged, Grey if not
-                ctx.fillStyle = b.tagged ? '#4ade80' : '#94a3b8';
-                ctx.beginPath();
-                ctx.arc(0, 0, b.size/2, 0, Math.PI*2);
-                ctx.fill();
-                
-                ctx.strokeStyle = '#333';
-                ctx.lineWidth = 4;
-                ctx.stroke();
-                
-                // Saw Teeth
-                ctx.fillStyle = b.tagged ? '#bbf7d0' : '#cbd5e1';
-                for(let i=0; i<8; i++) {
-                    ctx.rotate(Math.PI/4);
-                    ctx.beginPath();
-                    ctx.moveTo(b.size/2 - 2, -6);
-                    ctx.lineTo(b.size/2 + 8, 0);
-                    ctx.lineTo(b.size/2 - 2, 6);
-                    ctx.fill();
-                }
-                ctx.restore();
-                
-                // Outline Box if tagged
-                if (b.tagged) {
-                    ctx.strokeStyle = '#4ade80';
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(b.x, b.y, b.size, b.size);
-                }
-            });
-
-            // Draw Particles
-            particles.forEach(p => {
-                if (p.type === 'flash' || p.type === 'screen_flash') {
-                    ctx.fillStyle = p.color || `rgba(255, 255, 255, ${p.life})`;
-                    ctx.fillRect(p.x, p.y, p.w, p.h);
-                } else {
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(p.x, p.y, p.size, p.size);
-                    ctx.globalAlpha = 1.0;
-                }
-            });
-
-            // Draw Floating Texts
-            floatingTexts.forEach(ft => {
-                ctx.globalAlpha = ft.life;
-                ctx.fillStyle = ft.color;
-                ctx.font = '10px "Press Start 2P"';
-                ctx.textAlign = 'center';
-                ctx.fillText(ft.text, ft.x, ft.y);
-                ctx.globalAlpha = 1.0;
-            });
-
-            // Score Tracker
-            ctx.fillStyle = '#fff'; ctx.font = 'bold 24px "Press Start 2P"'; ctx.textAlign = 'center';
-            ctx.fillText(score, width / 2, 60);
-        }
-
         // --- MANAGERS ---
+
         window.updateMenuUI = function() {
             document.getElementById('menu-coins').innerText = saveData.economy.coins;
-            renderRank('menu-rank-container', saveData.stats.highScore); renderPfp();
+            renderRank('menu-rank-container', saveData.stats.highScore);
+            renderPfp();
             document.getElementById('player-name-input').value = saveData.profile.name;
             document.getElementById('menu-rank-text').innerText = getRankData(saveData.stats.highScore).name;
             document.getElementById('hud-coins').innerText = saveData.economy.coins;
             document.getElementById('best-val').innerText = saveData.stats.highScore;
             document.getElementById('menu-gumball-btn').innerText = `GUMBALL (${getGumballCost()}🟡)`;
-            document.getElementById('gumball-btn').innerText = `TURN KNOB (${getGumballCost()}🟡)`;
+            document.getElementById('gumball-btn').innerText = `TURN  (${getGumballCost()}🟡)`;
             document.getElementById('menu-wheel-btn').innerText = `SPIN WHEEL (${getWheelCost()}🟡)`;
             document.getElementById('wheel-spin-btn').innerText = `SPIN (${getWheelCost()}🟡)`;
+            if(GOOGLE_SCRIPT_URL) document.getElementById('connection-status').innerText = "ONLINE (Sheets)";
         }
 
         window.showMainMenu = function() { currentState = GAME_STATE.MENU; document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('menu').classList.remove('hidden'); window.updateMenuUI(); };
@@ -697,8 +645,7 @@
         
         window.startGame = function() {
             playSound('click'); if (audioCtx.state === 'suspended') audioCtx.resume();
-            currentState = GAME_STATE.PLAYING; score = 0; gameTime = 100; blades = []; items = []; particles = []; floatingTexts = []; spawnTimer = 0; spawnRate = 45; 
-            player.trail = []; player.x = width/2 - 16; player.y = groundY - 32; player.angle = 0; player.targetAngle = 0; earnedCoins = 0;
+            currentState = GAME_STATE.PLAYING; score = 0; gameTime = 100; blades = []; items = []; particles = []; floatingTexts = []; spawnTimer = 0; spawnRate = 45; player.trail = []; player.x = width/2 - 16; player.y = groundY - 32; earnedCoins = 0;
             document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('ui-layer').classList.remove('hidden'); document.getElementById('time-container').classList.remove('hidden');
             window.updateMenuUI();
         }
@@ -724,7 +671,6 @@
                     const ctx = c.getContext('2d');
                     if(isSkin) window.drawSkin(ctx, 0, 0, 32, id, 0); else { ctx.fillStyle = item.color; ctx.fillRect(0,0,32,32); }
                     c.onclick = () => { playSound('click'); if(isSkin) saveData.profile.skin = id; else saveData.settings.bg = id; saveGame(); renderGrid(type); if(isSkin) { previewCtx.clearRect(0,0,32,32); window.drawSkin(previewCtx, 0, 0, 32, id, globalTick); } };
-                    c.title = item.name;
                 }
                 grid.appendChild(c);
             });
@@ -739,24 +685,12 @@
             if (currentState === GAME_STATE.WHEEL) { window.updateAndDrawWheel(); return; }
             if (currentState === GAME_STATE.PLAYING) {
                 globalTick++; gameTime -= 0.07; if (gameTime <= 0) window.endGame(); document.getElementById('time-fill').style.width = Math.max(0, gameTime) + "%";
-                
-                // Input and Physics
                 if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed; else if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed; else player.vx *= 0.75; 
                 player.vy += player.gravity; player.x += player.vx; player.y += player.vy;
-                
-                // Flip Interpolation
-                if(player.angle < player.targetAngle) player.angle += 0.3;
-                if(player.angle > player.targetAngle) player.angle = player.targetAngle;
-
-                // Trail Update
-                const hue = (globalTick * 5) % 360; player.trail.unshift({x: player.x, y: player.y, angle: player.angle, color: `hsl(${hue}, 80%, 60%)`}); if(player.trail.length > 8) player.trail.pop();
-                
-                // Bounds Check
+                const hue = (globalTick * 5) % 360; player.trail.unshift({x: player.x, y: player.y, a: player.angle, color: `hsl(${hue}, 80%, 60%)`}); if(player.trail.length > 8) player.trail.pop();
                 if (player.x < 0) player.x = 0; if (player.x > width - player.w) player.x = width - player.w;
                 if (player.y > groundY - player.h) {
                     player.y = groundY - player.h; player.vy = 0; player.grounded = true; jumpCount = 0;
-                    if(player.angle % (Math.PI*2) !== 0) player.angle = player.targetAngle = Math.round(player.angle / (Math.PI*2)) * (Math.PI*2); // snap flip
-                    
                     let taggedIndices = []; for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) taggedIndices.push(i); }
                     if (taggedIndices.length > 0) {
                         let multiplier = taggedIndices.length > 1 ? 2 : 1; 
@@ -766,18 +700,12 @@
                         particles.push({x:0,y:groundY,w:width,h:5,life:0.5,type:'flash'});
                     }
                 }
-                
-                // Blade Spawning
                 spawnTimer++; if (spawnTimer > spawnRate) { window.spawnBlade(); spawnTimer = 0; spawnRate = Math.max(8, spawnRate - 0.08); }
-                
-                // Blade Logic
                 for (let i = blades.length - 1; i >= 0; i--) {
                     let b = blades[i]; b.x += b.vx; b.y += b.vy; b.rot += b.rotSpeed; if (b.x < 0) { b.x = 0; b.vx *= -1; } if (b.x > width - b.size) { b.x = width - b.size; b.vx *= -1; } if (b.y > groundY - b.size) { b.y = groundY - b.size; b.vy *= -0.5; }
                     if (Math.hypot((player.x + 16) - (b.x + 32), (player.y + 16) - (b.y + 32)) < 36) { window.endGame(); return; }
                     if (!b.tagged && (player.y + 32) < b.y + 40 && Math.abs((player.x + 16) - (b.x + 32)) < 55) { b.tagged = true; window.createParticles(b.x + 32, b.y, '#4ade80', 8); }
                 }
-                
-                // Items & Particles Logic
                 items.forEach((it, idx) => {
                     it.x += it.vx; it.y += it.vy; it.vy += 0.4; it.pulse += 0.2; if (it.y > groundY - 10) { it.y = groundY - 10; it.vy *= -0.5; it.vx *= 0.6; if(Math.abs(it.vx)<0.1)it.vx=0; }
                     if (Math.hypot((player.x + 16) - it.x, (player.y + 16) - it.y) < 45) { playSound('coin'); gameTime = Math.min(100, gameTime + 15); items.splice(idx, 1); window.createParticles(it.x, it.y, '#fbbf24', 8); }
@@ -785,26 +713,35 @@
                 for(let i=particles.length-1; i>=0; i--) { let p = particles[i]; if(p.type === 'flash') p.life -= 0.1; else { p.x += p.vx; p.y += p.vy; p.life -= 0.03; } if (p.life <= 0) particles.splice(i, 1); }
                 for(let i=floatingTexts.length-1; i>=0; i--) { let ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.02; if (ft.life <= 0) floatingTexts.splice(i, 1); }
             }
-            if (window.drawGame) window.drawGame(); 
+            window.drawGame();
         }
 
-        // --- 7. INITIALIZATION ---
+        window.drawGame = function() {
+            if(currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.GAMEOVER) { ctx.save(); ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; ctx.font = 'bold 180px "Press Start 2P", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(score, width / 2, height / 2 - 20); ctx.restore(); }
+            const tileSize = 40; for(let row=0; row < (height-groundY)/tileSize + 1; row++) { for(let col=0; col < width/tileSize + 1; col++) { ctx.fillStyle = (row + col) % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.2)'; ctx.fillRect(col * tileSize, groundY + row * tileSize, tileSize, tileSize); } }
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, groundY, width, 4);
+            particles.forEach(p => { if(p.type === 'flash') { ctx.fillStyle = `rgba(74, 222, 128, ${p.life * 0.4})`; ctx.fillRect(0, groundY, width, height-groundY); } else if (p.type === 'screen_flash') { ctx.fillStyle = p.color; ctx.fillRect(0, 0, width, height); } });
+            if(currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.GAMEOVER) {
+                blades.forEach(b => { ctx.save(); if(b.trail.length > 0) { b.trail.forEach((t, i) => { ctx.globalAlpha = 0.2 * (1 - i/b.trail.length); ctx.translate(t.x + 32, t.y + 32); ctx.rotate(t.rot); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 32, 0, Math.PI*2); ctx.fill(); ctx.rotate(-t.rot); ctx.translate(-(t.x + 32), -(t.y + 32)); }); } ctx.globalAlpha = 1.0; ctx.translate(b.x + 32, b.y + 32); ctx.rotate(b.rot); const isTagged = b.tagged; ctx.fillStyle = isTagged ? '#22c55e' : '#94a3b8'; ctx.beginPath(); for(let i=0; i<12; i++) { let r = i % 2 === 0 ? 32 : 21; let a = (i/12) * Math.PI * 2; ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle = isTagged ? '#86efac' : '#cbd5e1'; ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#475569'; ctx.fillRect(-5, -5, 10, 10); ctx.strokeStyle = isTagged ? '#14532d' : '#ef4444'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.stroke(); ctx.restore(); });
+                player.trail.forEach((t, i) => { ctx.globalAlpha = (1 - i/8) * 0.5; ctx.fillStyle = t.color; ctx.save(); ctx.translate(t.x + 16, t.y + 16); ctx.rotate(t.a); ctx.fillRect(-14, -14, 28, 28); ctx.restore(); }); ctx.globalAlpha = 1.0;
+                ctx.save(); ctx.translate(player.x + 16, player.y + 16); if(!player.grounded) { player.angle += player.vx * 0.08; ctx.rotate(player.angle); } ctx.translate(-16, -16); window.drawSkin(ctx, 0, 0, 32, saveData.profile.skin, globalTick); ctx.restore();
+                items.forEach(it => { ctx.fillStyle = '#fbbf24'; const s = 12 + Math.sin(it.pulse) * 4; ctx.shadowBlur = 10; ctx.shadowColor = '#fbbf24'; ctx.fillRect(it.x-s/2, it.y-s/2, s, s); ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.fillRect(it.x-2, it.y-2, 4, 4); });
+                particles.forEach(p => { if(p.type !== 'flash' && p.type !== 'screen_flash') { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); } }); ctx.globalAlpha = 1;
+                floatingTexts.forEach(ft => { ctx.globalAlpha = ft.life; ctx.fillStyle = ft.color; ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.font = '20px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText(ft.text, ft.x, ft.y); ctx.shadowBlur = 0; }); ctx.globalAlpha = 1;
+            }
+        }
+
+        // --- INIT ---
         window.onload = function() {
             width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; groundY = height - 50;
             stars.length = 0; for(let i=0; i<50; i++) stars.push({x: Math.random()*width, y: Math.random()*height, size: Math.random()*2+1, color: `rgba(255,255,255,${Math.random()})`, blink: Math.random()*100});
-            
             if(!saveData.inventory) saveData.inventory = { skins: ['default'], bgs: ['default'] };
             if(!saveData.economy) saveData.economy = { coins: 0, gumballCount: 0, wheelCount: 0 };
-            
-            window.showMainMenu(); loop();
+            window.showMainMenu(); window.loop();
         }
         window.addEventListener('resize', () => { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; groundY = height - 50; });
-        
-        // Key listeners
-        window.addEventListener('keydown', (e) => { keys[e.code] = true; if((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && currentState === GAME_STATE.PLAYING) handleJump(); });
-        window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-        canvas.addEventListener('touchstart', (e) => { if (currentState === GAME_STATE.PLAYING) { handleJump(); const touchX = e.touches[0].clientX; if (touchX < width/2) { keys['ArrowLeft'] = true; keys['ArrowRight'] = false; } else { keys['ArrowRight'] = true; keys['ArrowLeft'] = false; } } });
-        canvas.addEventListener('touchend', () => { keys['ArrowLeft'] = false; keys['ArrowRight'] = false; });
+        window.addEventListener('keydown', e => { if(currentState === GAME_STATE.PLAYING && (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW')) window.handleJump(); keys[e.code] = true; });
+        window.addEventListener('keyup', e => keys[e.code] = false);
     </script>
 </body>
 </html>
