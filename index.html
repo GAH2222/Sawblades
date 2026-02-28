@@ -9,14 +9,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         
         body {
-            margin: 0;
-            background-color: #111;
-            overflow: hidden;
-            font-family: 'Press Start 2P', cursive;
-            color: #f8fafc;
-            user-select: none;
-            -webkit-user-select: none;
-            cursor: default;
+            margin: 0; background-color: #111; overflow: hidden;
+            font-family: 'Press Start 2P', cursive; color: #f8fafc;
+            user-select: none; -webkit-user-select: none; cursor: default;
         }
 
         canvas { display: block; image-rendering: pixelated; }
@@ -114,7 +109,7 @@
 <body>
 
     <div class="scanlines"></div>
-    <div id="connection-status">LOCAL MODE (ADD URL)</div>
+    <div id="connection-status">CONNECTING...</div>
 
     <div id="ui-layer" class="hidden">
         <div style="color: #fbbf24;">🟡 <span id="hud-coins">0</span></div>
@@ -194,12 +189,15 @@
 
     <div id="changelog-modal" class="overlay hidden">
         <div class="modal-container">
-            <h2 class="text-2xl text-green-400 mb-6">PATCH NOTES v1.3</h2>
+            <h2 class="text-2xl text-green-400 mb-6">PATCH NOTES v1.4</h2>
             <div style="text-align: left; font-family: monospace; color: #ccc; font-size: 0.8rem; line-height: 1.5;">
-                <p class="text-white mb-2">> CONNECTIVITY</p>
+                <p class="text-white mb-2">> MAJOR UPDATE</p>
                 <ul class="list-disc pl-5 mb-4">
-                    <li>Added Google Sheets Integration Support.</li>
-                    <li>Added Input Box for Player Name.</li>
+                    <li>LIVE GLOBAL LEADERBOARD INTEGRATED!</li>
+                    <li>Added SIMULATION BREACH story events during deep runs.</li>
+                    <li>Gumball Machine fully animated - rewards SKINS only.</li>
+                    <li>Spin Wheel sped up & animated - rewards BGs only.</li>
+                    <li>Wipe Save functionally restored.</li>
                 </ul>
             </div>
             <button class="arcade-btn mt-4" onclick="window.showMainMenu()">CLOSE</button>
@@ -210,13 +208,14 @@
         <div class="modal-container" style="max-width: 400px;">
             <h2 class="text-xl text-gray-300 mb-6">SETTINGS</h2>
             <button class="arcade-btn red mb-4" onclick="window.wipeSave()">WIPE LOCAL DATA</button>
+            <br>
             <button class="arcade-btn" onclick="window.showMainMenu()">BACK</button>
         </div>
     </div>
 
     <div id="gumball-ui" class="overlay hidden" style="background: transparent; pointer-events: none;">
         <div class="gumball-ui-container">
-             <button id="gumball-btn" class="arcade-btn red" onclick="window.turnKnob()">TURN </button>
+             <button id="gumball-btn" class="arcade-btn red" onclick="window.turnKnob()">TURN</button>
              <button id="gumball-back-btn" class="arcade-btn" onclick="window.showMainMenu()">EXIT</button>
         </div>
     </div>
@@ -227,13 +226,13 @@
         </div>
     </div>
     <div id="prize-reveal" class="overlay hidden">
-        <div class="skin-menu-container" style="max-width: 400px;">
+        <div class="skin-menu-container" style="max-width: 400px; z-index: 100;">
             <h2 class="text-yellow-400 mb-6 text-xl">UNLOCKED!</h2>
             <div style="width: 96px; height: 96px; margin: 0 auto 20px; background: #202028; border: 4px solid #fff; display: flex; align-items: center; justify-content: center;">
                 <canvas id="prizeCanvas" width="32" height="32" style="width: 96px; height: 96px; image-rendering: pixelated;"></canvas>
             </div>
             <p id="prize-name" class="text-white mb-2 text-lg">NAME</p>
-            <p id="prize-rarity" class="text-xs mb-8 uppercase tracking-widest">COMMON</p>
+            <p id="prize-rarity" class="text-xs mb-8 uppercase tracking-widest font-bold">COMMON</p>
             <button class="arcade-btn" onclick="window.closePrize()">AWESOME</button>
         </div>
     </div>
@@ -257,26 +256,20 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyfaFxogrAw3yoN8Eji-RF4OLGY8DAOh_wRhGYztL1q2gw4-pLTaNFINlp7LUC8IZjgbg/exec"; 
+        // --- GOOGLE SHEETS CONFIGURATION ---
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt8yJ9HMkQsl7CcDouYNDK6dsmcbR-eidhggJXBkz2JeNkXhHzvOsgQjvxhUDb41IP/exec"; 
 
-        // --- 1. GLOBALS & CONFIG ---
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const previewCanvas = document.getElementById('previewCanvas');
-        const previewCtx = previewCanvas.getContext('2d');
-        const prizeCanvas = document.getElementById('prizeCanvas');
-        const prizeCtx = prizeCanvas.getContext('2d');
-        const menuPfpCanvas = document.getElementById('menu-pfp-canvas');
-        const menuPfpCtx = menuPfpCanvas.getContext('2d');
+        // --- GLOBALS & CONFIG ---
+        const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
+        const previewCanvas = document.getElementById('previewCanvas'); const previewCtx = previewCanvas.getContext('2d');
+        const prizeCanvas = document.getElementById('prizeCanvas'); const prizeCtx = prizeCanvas.getContext('2d');
+        const menuPfpCanvas = document.getElementById('menu-pfp-canvas'); const menuPfpCtx = menuPfpCanvas.getContext('2d');
 
-        // Audio Context
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSound(type) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); const now = audioCtx.currentTime;
             if (type === 'jump') { osc.type = 'square'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(300, now+0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.1); osc.start(now); osc.stop(now+0.1); }
             else if (type === 'coin') { osc.type = 'sine'; osc.frequency.setValueAtTime(1000, now); osc.frequency.exponentialRampToValueAtTime(2000, now+0.1); gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.1); osc.start(now); osc.stop(now+0.1); }
             else if (type === 'gameover') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(50, now+0.5); gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now+0.5); osc.start(now); osc.stop(now+0.5); }
@@ -289,25 +282,21 @@
         
         let width, height, groundY;
         let score = 0, gameTime = 100, spawnTimer = 0, spawnRate = 45; 
-        let jumpCount = 0, globalTick = 0;
-        let earnedCoins = 0;
+        let jumpCount = 0, globalTick = 0, earnedCoins = 0;
 
         const player = { x: 0, y: 0, w: 32, h: 32, vx: 0, vy: 0, speed: 7.0, jump: -15, gravity: 0.6, grounded: false, angle: 0, trail: [] };
         let blades = []; let particles = []; let items = []; let floatingTexts = []; const stars = [];
-        let gumball = { state: 'idle', timer: 0, knobAngle: 0, balls: [], droppedBall: null };
-        let wheel = { angle: 0, velocity: 0, state: 'idle', result: null };
+        let gumball = { state: 'idle', timer: 0, knobAngle: 0 };
+        let wheel = { angle: 0, velocity: 0, state: 'idle' };
         const keys = {};
 
-        let nextNoteTime = 0;
-        let noteIndex = 0;
-        const melody = [220, 0, 261, 0, 329, 0, 261, 0];
+        let nextNoteTime = 0; let noteIndex = 0; const melody = [220, 0, 261, 0, 329, 0, 261, 0];
         window.scheduleAudio = function() {
             if(currentState !== GAME_STATE.PLAYING) return;
             while (nextNoteTime < audioCtx.currentTime + 0.1) {
                 const freq = melody[noteIndex % melody.length];
                 if(freq > 0) {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
+                    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
                     osc.connect(gain); gain.connect(audioCtx.destination);
                     osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, nextNoteTime);
                     gain.gain.setValueAtTime(0.02, nextNoteTime); gain.gain.exponentialRampToValueAtTime(0.001, nextNoteTime + 0.1);
@@ -317,7 +306,6 @@
             }
         }
 
-        // --- 2. DATA CONSTANTS & SAVE ---
         const SAVE_KEY = 'sawblades_save_v1_1';
         const DEFAULT_SAVE = { profile: { name: "PLAYER", skin: "default" }, economy: { coins: 0, gumballCount: 0, wheelCount: 0 }, inventory: { skins: ["default"], bgs: ["default"] }, stats: { highScore: 0 }, settings: { bg: "default" }, leaderboard: [] };
         let saveData = JSON.parse(localStorage.getItem(SAVE_KEY)) || JSON.parse(JSON.stringify(DEFAULT_SAVE));
@@ -327,334 +315,161 @@
         const SKINS = { 'default': { name: 'CLASSIC RED', color: '#ef4444', rarity: 'common' }, 'blue': { name: 'BLUE BLOCK', color: '#3b82f6', rarity: 'common' }, 'green': { name: 'GREEN BLOCK', color: '#22c55e', rarity: 'common' }, 'yellow': { name: 'YELLOW BLOCK', color: '#eab308', rarity: 'common' }, 'purple': { name: 'PURPLE BLOCK', color: '#a855f7', rarity: 'common' }, 'white': { name: 'GHOST WHITE', color: '#f3f4f6', rarity: 'common' }, 'gray': { name: 'SLATE GRAY', color: '#6b7280', rarity: 'common' }, 'orange': { name: 'ORANGE BLOCK', color: '#f97316', rarity: 'common' }, 'pink': { name: 'PINK BLOCK', color: '#fb7185', rarity: 'common' }, 'teal': { name: 'TEAL BLOCK', color: '#14b8a6', rarity: 'common' }, 'stripe_h': { name: 'HORIZON', color: '#ef4444', type: 'stripe_h', rarity: 'uncommon' }, 'stripe_v': { name: 'PRISONER', color: '#fff', type: 'stripe_v', rarity: 'uncommon' }, 'checkers': { name: 'RACE FLAG', color: '#fff', type: 'checkers', rarity: 'uncommon' }, 'target': { name: 'TARGET', color: '#ef4444', type: 'target', rarity: 'uncommon' }, 'creeper': { name: 'BOOM', color: '#22c55e', type: 'face_creeper', rarity: 'uncommon' }, 'smile': { name: 'HAPPY', color: '#eab308', type: 'face_smile', rarity: 'uncommon' }, 'boxer': { name: 'BOXER', color: '#fca5a5', type: 'headband', rarity: 'uncommon' }, 'bandit': { name: 'BANDIT', color: '#94a3b8', type: 'mask', rarity: 'uncommon' }, 'dark': { name: 'SHADOW', color: '#111', type: 'eyes_red', rarity: 'uncommon' }, 'gold_trim': { name: 'FANCY', color: '#444', type: 'gold_border', rarity: 'uncommon' }, 'ninja': { name: 'SHINOBI', color: '#171717', type: 'ninja', rarity: 'rare' }, 'robot': { name: 'BOT-01', color: '#94a3b8', type: 'robot', rarity: 'rare' }, 'slime': { name: 'GOO', color: '#a3e635', type: 'slime', rarity: 'rare' }, 'pumpkin': { name: 'JACK', color: '#f97316', type: 'pumpkin', rarity: 'rare' }, 'soldier': { name: 'MARINE', color: '#3f6212', type: 'helmet', rarity: 'rare' }, 'diver': { name: 'DEEP SEA', color: '#eab308', type: 'diver', rarity: 'rare' }, 'tv': { name: 'TV HEAD', color: '#3b82f6', type: 'tv', rarity: 'rare' }, 'amogus': { name: 'SUS', color: '#ef4444', type: 'visor', rarity: 'rare' }, 'king': { name: 'THE KING', color: '#eab308', type: 'king', rarity: 'epic' }, 'knight': { name: 'PALADIN', color: '#cbd5e1', type: 'knight', rarity: 'epic' }, 'cyborg': { name: 'CYBORG', color: '#475569', type: 'cyborg', rarity: 'epic' }, 'demon': { name: 'ONI', color: '#991b1b', type: 'demon', rarity: 'epic' }, 'angel': { name: 'SERAPH', color: '#fff', type: 'angel', rarity: 'epic' }, 'solar': { name: 'SOLAR', color: '#f97316', type: 'solar', rarity: 'mythic' }, 'nebula': { name: 'NEBULA', color: '#6366f1', type: 'nebula', rarity: 'mythic' }, 'matrix': { name: 'THE ONE', color: '#000', type: 'matrix', rarity: 'mythic' }, 'glitch': { name: 'MISSINGNO', color: '#000', type: 'glitch', rarity: 'legendary' }, 'plumbous': { name: 'PLUMBOUS', color: '#fbbf24', type: 'plumbous', rarity: 'common' }, 'markian': { name: 'MARKIAN', color: '#fff1f2', type: 'markian', rarity: 'rare' }, 'talia': { name: 'TALIA', color: '#fdba74', type: 'talia', rarity: 'common' }, 'diaper_dog': { name: 'DIAPER DOG', color: '#a16207', type: 'dog', rarity: 'common' }, 'nick': { name: 'NICK', color: '#000', type: 'nick', rarity: 'rare' }, 'walter': { name: 'WALTER', color: '#1e40af', type: 'walter', rarity: 'rare' }, 'thomas': { name: 'THOMAS', color: '#ffe0bd', type: 'thomas', rarity: 'rare' }, 'husband': { name: 'LYDIAS HUSBAND', color: '#fca5a5', type: 'husband', rarity: 'epic' }, 'candella': { name: 'CANDELLA', color: '#d97706', type: 'candella', rarity: 'epic' }, 'basic': { name: 'REID/JACK', color: '#fca5a5', type: 'basic', rarity: 'epic' }, 'sam_kim': { name: 'SAM KIM', color: '#854d0e', type: 'sam_kim', rarity: 'epic' }, 'wilks': { name: 'WILKS', color: '#fca5a5', type: 'wilks', rarity: 'mythic' }, 'curry': { name: 'CURRY', color: '#fff', type: 'curry', rarity: 'legendary' }, 'jcsmp_king': { name: 'JCSMP KING', color: '#fbbf24', type: 'jcsmp_king', rarity: 'legendary' } };
         const BACKGROUNDS = { 'default': { name: 'DEEP SPACE', type: 'stars', rarity: 'common', color: '#202028' }, 'midnight': { name: 'MIDNIGHT', type: 'stars', rarity: 'common', color: '#0f172a' }, 'sunset': { name: 'SUNSET', type: 'sunset', rarity: 'rare', color: '#4a044e' }, 'grid': { name: 'RETRO GRID', type: 'grid', rarity: 'uncommon', color: '#170a1c' }, 'waves': { name: 'OCEANIC', type: 'waves', rarity: 'uncommon', color: '#0c4a6e' }, 'rain': { name: 'ACID RAIN', type: 'rain', rarity: 'uncommon', color: '#020617' }, 'circuit': { name: 'MAINFRAME', type: 'circuit', rarity: 'rare', color: '#052e16' }, 'snow': { name: 'BLIZZARD', type: 'snow', rarity: 'rare', color: '#1e293b' }, 'hex': { name: 'HEXAGON', type: 'hex', rarity: 'epic', color: '#111827' }, 'matrix': { name: 'THE SOURCE', type: 'matrix', rarity: 'epic', color: '#000' }, 'magma': { name: 'MOLTEN CORE', type: 'magma', rarity: 'epic', color: '#2b0a0a' }, 'hyperspace': { name: 'WARP SPEED', type: 'hyperspace', rarity: 'mythic', color: '#000' }, 'plasma': { name: 'ENERGY FIELD', type: 'plasma', rarity: 'legendary', color: '#000' }, 'void': { name: 'THE VOID', type: 'void', rarity: 'legendary', color: '#000' }, 'curry_court': { name: 'CURRYCOURT', type: 'curry_court', rarity: 'legendary', color: '#14532d' }, 'jcsmp': { name: 'JCSMP', type: 'jcsmp', rarity: 'legendary', color: '#60a5fa' }, 'mezz': { name: 'THE MEZZ', type: 'mezz', rarity: 'legendary', color: '#3f2c22' } };
 
-        let unlockedSkins = Object.keys(SKINS);
-        let unlockedBGs = Object.keys(BACKGROUNDS);
-
-        // --- 4. CLOUD & SAVE ---
+        // --- CLOUD & SAVE ---
         function saveGame() {
             localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
             if (GOOGLE_SCRIPT_URL) {
-                const payload = {
-                    action: "saveData",
-                    userId: getUserId(),
-                    data: saveData
-                };
                 fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors",
+                    method: "POST", mode: "no-cors",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                }).then(() => console.log("Cloud Saved")).catch(e => console.log("Cloud Error", e));
+                    body: JSON.stringify({ action: "saveData", userId: saveData.profile.name, data: saveData })
+                }).catch(e => console.log("Cloud Error", e));
             }
-        }
-        
-        function getUserId() {
-            let uid = localStorage.getItem("sawblades_uid");
-            if (!uid) { uid = "user_" + Math.random().toString(36).substr(2, 9); localStorage.setItem("sawblades_uid", uid); }
-            return uid;
         }
 
         window.submitScoreCloud = function(score) {
             if (GOOGLE_SCRIPT_URL) {
-                const payload = {
-                    action: "submitScore",
-                    name: saveData.profile.name,
-                    score: score,
-                    rank: getRankData(score).name
-                };
                 fetch(GOOGLE_SCRIPT_URL, {
-                    method: "POST",
-                    mode: "no-cors",
+                    method: "POST", mode: "no-cors",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ action: "submit", name: saveData.profile.name, score: score, rank: getRankData(score).name })
                 }).catch(e => console.log("Score Error", e));
             }
         }
 
-        window.fetchLeaderboardCloud = function() {
-            const list = document.getElementById('leaderboard-list');
-            list.innerHTML = 'Loading...';
-            
-            if (!GOOGLE_SCRIPT_URL) {
-                list.innerHTML = `<div class="leaderboard-row gold"><span>#1 ${saveData.profile.name}</span><span>${saveData.stats.highScore}</span></div><div style="padding:10px; color:#666;">(Add Google Script URL for Online)</div>`;
-                return;
-            }
-
-            fetch(GOOGLE_SCRIPT_URL + "?action=getLeaderboard")
-            .then(res => res.json())
-            .then(data => {
+        window.fetchLeaderboardCloud = async function() {
+            const list = document.getElementById('leaderboard-list'); list.innerHTML = 'Loading...';
+            if (!GOOGLE_SCRIPT_URL) { list.innerHTML = 'Offline Mode'; return; }
+            try {
+                let res = await fetch(GOOGLE_SCRIPT_URL + "?action=get");
+                let data = await res.json();
                 list.innerHTML = '';
                 data.forEach((s, i) => {
-                    const div = document.createElement('div');
-                    div.className = `leaderboard-row ${i===0 ? 'gold' : ''}`;
-                    div.innerHTML = `<span>#${i+1} ${s.name}</span><span>${s.score} <span style="font-size:0.6rem; color:#888;">${s.rank}</span></span>`;
+                    const div = document.createElement('div'); div.className = `leaderboard-row ${i===0 ? 'gold' : ''}`;
+                    div.innerHTML = `<span>#${i+1} ${s.name}</span><span>${s.score} <span style="font-size:0.6rem; color:#888;">${s.rank||""}</span></span>`;
                     list.appendChild(div);
                 });
-            })
-            .catch(e => {
+            } catch (e) {
                 list.innerHTML = 'Error loading leaderboard.';
-                console.error(e);
-            });
+            }
         }
 
-        // --- CORE ---
-        function getRankData(score) {
-            for (let i = RANKS.length - 1; i >= 0; i--) if (score >= RANKS[i].min) return RANKS[i];
-            return RANKS[0];
-        }
-
+        function getRankData(score) { for (let i = RANKS.length - 1; i >= 0; i--) if (score >= RANKS[i].min) return RANKS[i]; return RANKS[0]; }
         function getGumballCost() { return 5 + Math.floor(saveData.economy.gumballCount / 2) * 5; }
         function getWheelCost() { return 5 + Math.floor(saveData.economy.wheelCount / 2) * 5; }
 
         function renderRank(elementId, score) {
-            const rank = getRankData(score);
-            const el = document.getElementById(elementId);
-            if(el) el.innerHTML = `<span class="rank-icon">${rank.icon}</span><span style="color: ${rank.color}; ${rank.css || ''}">${rank.name}</span>`;
+            const rank = getRankData(score); const el = document.getElementById(elementId);
+            if(el) el.innerHTML = `<span class="rank-icon">${rank.icon}</span><span style="color: ${rank.color};">${rank.name}</span>`;
         }
 
-        function renderPfp() {
-            menuPfpCtx.clearRect(0,0,32,32);
-            window.drawSkin(menuPfpCtx, 0, 0, 32, saveData.profile.skin, 0);
-        }
+        function renderPfp() { menuPfpCtx.clearRect(0,0,32,32); window.drawSkin(menuPfpCtx, 0, 0, 32, saveData.profile.skin, 0); }
+        window.updateName = function(newName) { if(newName && newName.length <= 12) { saveData.profile.name = newName.toUpperCase(); saveGame(); } else { alert("Name max 12 chars."); document.getElementById('player-name-input').value = saveData.profile.name; } }
+        window.wipeSave = function() { if(confirm("Are you sure?")) { localStorage.removeItem(SAVE_KEY); location.reload(); } }
 
-        window.updateName = function(newName) {
-            if(newName && newName.length <= 12) {
-                saveData.profile.name = newName.toUpperCase();
-                saveGame();
-            } else {
-                alert("Name max 12 chars.");
-                document.getElementById('player-name-input').value = saveData.profile.name;
-            }
-        }
-
-        window.editProfile = function() {
-             document.getElementById('player-name-input').focus();
-        }
-
-        window.wipeSave = function() {
-            if(confirm("Are you sure?")) { localStorage.removeItem(SAVE_KEY); location.reload(); }
-        }
-
-       // --- MINIGAME LOGIC (Gumball & Wheel) ---
+        // --- MINIGAME LOGIC (Canvas-based) ---
         window.startGumball = function() {
-            if (currentState !== GAME_STATE.MENU) return;
-            currentState = GAME_STATE.GUMBALL;
-            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
-            document.getElementById('gumball-ui').classList.remove('hidden');
+            if (currentState !== GAME_STATE.MENU) return; currentState = GAME_STATE.GUMBALL; particles = [];
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('gumball-ui').classList.remove('hidden');
             gumball.state = 'idle'; gumball.knobAngle = 0; gumball.timer = 0;
-            particles = []; // Clear particles for minigame
         };
 
         window.turnKnob = function() {
             const cost = getGumballCost();
             if (saveData.economy.coins >= cost && gumball.state === 'idle') {
-                saveData.economy.coins -= cost;
-                saveData.economy.gumballCount++;
-                saveGame(); window.updateMenuUI();
-                gumball.state = 'turning'; gumball.timer = 0;
-                playSound('click');
-            } else if (saveData.economy.coins < cost) {
-                alert("NOT ENOUGH COINS!");
-            }
+                saveData.economy.coins -= cost; saveData.economy.gumballCount++; saveGame(); window.updateMenuUI();
+                gumball.state = 'turning'; gumball.timer = 0; playSound('click');
+            } else if (saveData.economy.coins < cost) { alert("NOT ENOUGH COINS!"); }
         };
 
         window.updateAndDrawGumball = function() {
             ctx.fillStyle = '#111'; ctx.fillRect(0, 0, width, height);
             stars.forEach(s => { s.blink++; if(Math.sin(s.blink * 0.1) > 0) { ctx.fillStyle = s.color; ctx.fillRect(s.x, s.y, s.size, s.size); } });
             
-            // Draw any active particles (Confetti surprise!)
-            for(let i=particles.length-1; i>=0; i--) { 
-                let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02; 
-                ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
-                if (p.life <= 0) particles.splice(i, 1); 
-            }
-            ctx.globalAlpha = 1.0;
-
+            for(let i=particles.length-1; i>=0; i--) { let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02; ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); if (p.life <= 0) particles.splice(i, 1); } ctx.globalAlpha = 1.0;
             ctx.save(); ctx.translate(width / 2, height / 2);
             
-            // Faux-3D Base
-            const baseGrd = ctx.createLinearGradient(-60, 0, 60, 0);
-            baseGrd.addColorStop(0, '#7f1d1d'); baseGrd.addColorStop(0.5, '#ef4444'); baseGrd.addColorStop(1, '#7f1d1d');
+            const baseGrd = ctx.createLinearGradient(-60, 0, 60, 0); baseGrd.addColorStop(0, '#7f1d1d'); baseGrd.addColorStop(0.5, '#ef4444'); baseGrd.addColorStop(1, '#7f1d1d');
             ctx.fillStyle = baseGrd; ctx.fillRect(-60, 20, 120, 100);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-65, 125, 130, 10); ctx.fillStyle = '#450a0a'; ctx.fillRect(-70, 100, 140, 25);
             
-            // Bottom Lip & Shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(-65, 125, 130, 10);
-            ctx.fillStyle = '#450a0a'; ctx.fillRect(-70, 100, 140, 25);
+            const globeGrd = ctx.createRadialGradient(-20, -70, 10, 0, -50, 70); globeGrd.addColorStop(0, 'rgba(255, 255, 255, 0.4)'); globeGrd.addColorStop(0.6, 'rgba(255, 255, 255, 0.05)'); globeGrd.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
+            ctx.fillStyle = globeGrd; ctx.beginPath(); ctx.arc(0, -50, 70, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.beginPath(); ctx.ellipse(-25, -80, 25, 12, Math.PI / 6, 0, Math.PI * 2); ctx.fill();
             
-            // Glass Globe with depth
-            const globeGrd = ctx.createRadialGradient(-20, -70, 10, 0, -50, 70);
-            globeGrd.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-            globeGrd.addColorStop(0.6, 'rgba(255, 255, 255, 0.05)');
-            globeGrd.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
-            ctx.fillStyle = globeGrd;
-            ctx.beginPath(); ctx.arc(0, -50, 70, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-
-            // Gloss Reflection
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.beginPath(); ctx.ellipse(-25, -80, 25, 12, Math.PI / 6, 0, Math.PI * 2); ctx.fill();
-            
-            // Knob
             ctx.save(); ctx.translate(0, 60);
-            if (gumball.state === 'turning') {
-                gumball.knobAngle += 0.15;
-                if (gumball.knobAngle >= Math.PI * 2) {
-                    gumball.state = 'dropping'; gumball.timer = 0; gumball.knobAngle = 0; playSound('coin');
-                }
-            }
-            ctx.rotate(gumball.knobAngle);
-            ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 3;
-            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-20, -7, 40, 14); ctx.fillRect(-7, -20, 14, 40);
-            ctx.shadowColor = 'transparent';
-            ctx.restore();
+            if (gumball.state === 'turning') { gumball.knobAngle += 0.15; if (gumball.knobAngle >= Math.PI * 2) { gumball.state = 'dropping'; gumball.timer = 0; gumball.knobAngle = 0; playSound('coin'); } }
+            ctx.rotate(gumball.knobAngle); ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 3;
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-20, -7, 40, 14); ctx.fillRect(-7, -20, 14, 40); ctx.shadowColor = 'transparent'; ctx.restore();
 
-            // Dropping animation
-            if (gumball.state === 'dropping') {
-                gumball.timer++; let dropY = 60 + gumball.timer * 3;
-                ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(0, dropY, 15, 0, Math.PI * 2); ctx.fill();
-                // Add a little bounce to the drop
-                if (gumball.timer > 35) { 
-                    gumball.state = 'idle'; 
-                    grantRandomPrize(true); // TRUE = Gumball (Skins)
-                }
-            }
+            if (gumball.state === 'dropping') { gumball.timer++; let dropY = 60 + gumball.timer * 3; ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(0, dropY, 15, 0, Math.PI * 2); ctx.fill(); if (gumball.timer > 35) { gumball.state = 'idle'; grantRandomPrize(true); } }
             ctx.restore();
         };
 
         window.startWheel = function() {
-            if (currentState !== GAME_STATE.MENU) return;
-            currentState = GAME_STATE.WHEEL;
-            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
-            document.getElementById('wheel-ui').classList.remove('hidden');
-            wheel.state = 'idle';
-            particles = []; // Clear particles
+            if (currentState !== GAME_STATE.MENU) return; currentState = GAME_STATE.WHEEL; particles = [];
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('wheel-ui').classList.remove('hidden'); wheel.state = 'idle';
         };
 
         window.spinWheel = function() {
             const cost = getWheelCost();
             if (saveData.economy.coins >= cost && wheel.state === 'idle') {
-                saveData.economy.coins -= cost;
-                saveData.economy.wheelCount++;
-                saveGame(); window.updateMenuUI();
-                // MUCH faster velocity
-                wheel.state = 'spinning'; wheel.velocity = Math.random() * 0.5 + 1.2;
-                playSound('jump');
-            } else if (saveData.economy.coins < cost) {
-                alert("NOT ENOUGH COINS!");
-            }
+                saveData.economy.coins -= cost; saveData.economy.wheelCount++; saveGame(); window.updateMenuUI();
+                wheel.state = 'spinning'; wheel.velocity = Math.random() * 0.5 + 1.2; playSound('jump');
+            } else if (saveData.economy.coins < cost) { alert("NOT ENOUGH COINS!"); }
         };
 
         window.updateAndDrawWheel = function() {
             ctx.fillStyle = '#111'; ctx.fillRect(0, 0, width, height);
             stars.forEach(s => { s.blink++; if(Math.sin(s.blink * 0.1) > 0) { ctx.fillStyle = s.color; ctx.fillRect(s.x, s.y, s.size, s.size); } });
             
-            // Draw Confetti
-            for(let i=particles.length-1; i>=0; i--) { 
-                let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02; 
-                ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
-                if (p.life <= 0) particles.splice(i, 1); 
-            }
-            ctx.globalAlpha = 1.0;
-
+            for(let i=particles.length-1; i>=0; i--) { let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life -= 0.02; ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); if (p.life <= 0) particles.splice(i, 1); } ctx.globalAlpha = 1.0;
             ctx.save(); ctx.translate(width / 2, height / 2 - 50);
             
             if (wheel.state === 'spinning') {
-                wheel.velocity *= 0.985; // Lower friction = longer spin
-                wheel.angle += wheel.velocity;
-                // Add tick sound as it slows down
-                if (wheel.velocity > 0.01 && Math.floor(wheel.angle / (Math.PI / 4)) !== Math.floor((wheel.angle - wheel.velocity) / (Math.PI / 4))) {
-                    playSound('tick');
-                }
-                if (wheel.velocity < 0.002) { 
-                    wheel.state = 'idle'; wheel.velocity = 0; playSound('coin'); 
-                    grantRandomPrize(false); // FALSE = Wheel (Backgrounds)
-                }
+                wheel.velocity *= 0.985; wheel.angle += wheel.velocity;
+                if (wheel.velocity > 0.01 && Math.floor(wheel.angle / (Math.PI / 4)) !== Math.floor((wheel.angle - wheel.velocity) / (Math.PI / 4))) { playSound('tick'); }
+                if (wheel.velocity < 0.002) { wheel.state = 'idle'; wheel.velocity = 0; playSound('coin'); grantRandomPrize(false); }
             }
             
-            // Wheel Body with Shadow & Depth
-            ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 10;
-            ctx.rotate(wheel.angle);
-            const segments = 8;
-            for (let i = 0; i < segments; i++) {
-                ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 140, i * (Math.PI * 2 / segments), (i + 1) * (Math.PI * 2 / segments));
+            ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 20; ctx.shadowOffsetY = 10; ctx.rotate(wheel.angle);
+            for (let i = 0; i < 8; i++) {
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 140, i * (Math.PI / 4), (i + 1) * (Math.PI / 4));
                 const sliceGrd = ctx.createRadialGradient(0,0,0, 0,0,140);
-                if (i % 2 === 0) { sliceGrd.addColorStop(0, '#ef4444'); sliceGrd.addColorStop(1, '#991b1b'); } 
-                else { sliceGrd.addColorStop(0, '#fbbf24'); sliceGrd.addColorStop(1, '#b45309'); }
-                ctx.fillStyle = sliceGrd; ctx.fill(); 
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+                if (i % 2 === 0) { sliceGrd.addColorStop(0, '#ef4444'); sliceGrd.addColorStop(1, '#991b1b'); } else { sliceGrd.addColorStop(0, '#fbbf24'); sliceGrd.addColorStop(1, '#b45309'); }
+                ctx.fillStyle = sliceGrd; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
             }
-            ctx.shadowColor = 'transparent';
-
-            // Center Peg
-            ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = '#666'; ctx.beginPath(); ctx.arc(-5, -5, 8, 0, Math.PI*2); ctx.fill();
-            ctx.restore();
+            ctx.shadowColor = 'transparent'; ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#666'; ctx.beginPath(); ctx.arc(-5, -5, 8, 0, Math.PI*2); ctx.fill(); ctx.restore();
             
-            // Pointer with Shadow
-            ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 5;
-            ctx.fillStyle = '#fff'; ctx.beginPath();
-            ctx.moveTo(width / 2, height / 2 - 200); ctx.lineTo(width / 2 - 20, height / 2 - 230); ctx.lineTo(width / 2 + 20, height / 2 - 230); ctx.fill();
-            ctx.shadowColor = 'transparent';
+            ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 5; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(width / 2, height / 2 - 200); ctx.lineTo(width / 2 - 20, height / 2 - 230); ctx.lineTo(width / 2 + 20, height / 2 - 230); ctx.fill(); ctx.shadowColor = 'transparent';
         };
 
         function grantRandomPrize(isGumball) {
-            // isGumball is TRUE for Gumball Machine (Skins), FALSE for Wheel (Backgrounds)
-            const isSkin = isGumball; 
-            const pool = isSkin ? Object.keys(SKINS) : Object.keys(BACKGROUNDS);
+            const isSkin = isGumball; const pool = isSkin ? Object.keys(SKINS) : Object.keys(BACKGROUNDS);
             const unlocked = isSkin ? saveData.inventory.skins : saveData.inventory.bgs;
             const lockedPool = pool.filter(item => !unlocked.includes(item));
             
             let prizeId, prizeName, prizeRarity, isDuplicate = false;
-            
-            if (lockedPool.length > 0) {
-                prizeId = lockedPool[Math.floor(Math.random() * lockedPool.length)];
-                unlocked.push(prizeId);
-                saveGame();
-            } else {
-                prizeId = pool[Math.floor(Math.random() * pool.length)];
-                isDuplicate = true; saveData.economy.coins += 25; saveGame();
-            }
+            if (lockedPool.length > 0) { prizeId = lockedPool[Math.floor(Math.random() * lockedPool.length)]; unlocked.push(prizeId); saveGame(); } 
+            else { prizeId = pool[Math.floor(Math.random() * pool.length)]; isDuplicate = true; saveData.economy.coins += 25; saveGame(); }
             
             const itemDef = isSkin ? SKINS[prizeId] : BACKGROUNDS[prizeId];
-            prizeName = isDuplicate ? itemDef.name + " (DUP! +25🟡)" : itemDef.name;
-            prizeRarity = itemDef.rarity;
+            prizeName = isDuplicate ? itemDef.name + " (DUP! +25🟡)" : itemDef.name; prizeRarity = itemDef.rarity;
             
-            document.getElementById('prize-name').innerText = prizeName;
-            document.getElementById('prize-rarity').innerText = prizeRarity.toUpperCase();
-            document.getElementById('prize-rarity').className = `text-xs mb-8 uppercase tracking-widest rarity-${prizeRarity}`;
-            
+            document.getElementById('prize-name').innerText = prizeName; document.getElementById('prize-rarity').innerText = prizeRarity.toUpperCase(); document.getElementById('prize-rarity').className = `text-xs mb-8 uppercase tracking-widest rarity-${prizeRarity}`;
             prizeCtx.clearRect(0,0,32,32);
-            if (isSkin) window.drawSkin(prizeCtx, 0, 0, 32, prizeId, 0);
-            else { prizeCtx.fillStyle = itemDef.color; prizeCtx.fillRect(0,0,32,32); }
+            if (isSkin) window.drawSkin(prizeCtx, 0, 0, 32, prizeId, 0); else { prizeCtx.fillStyle = itemDef.color; prizeCtx.fillRect(0,0,32,32); }
             
-            // Surprise Confetti Burst!
-            for(let i=0; i<40; i++) {
-                const colors = ['#ef4444', '#3b82f6', '#22c55e', '#fbbf24', '#a855f7'];
-                window.createParticles(width/2, height/2, colors[Math.floor(Math.random()*colors.length)], 1);
-            }
-
-            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
-            document.getElementById('prize-reveal').classList.remove('hidden');
+            for(let i=0; i<40; i++) { const colors = ['#ef4444', '#3b82f6', '#22c55e', '#fbbf24', '#a855f7']; window.createParticles(width/2, height/2, colors[Math.floor(Math.random()*colors.length)], 1); }
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('prize-reveal').classList.remove('hidden');
         }
 
-        window.closePrize = function() {
-            document.getElementById('prize-reveal').classList.add('hidden'); window.showMainMenu();
-        };
+        window.closePrize = function() { document.getElementById('prize-reveal').classList.add('hidden'); window.showMainMenu(); };
 
         // --- DRAWING ---
-        window.createParticles = function(x, y, color, count) {
-            for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color });
-        }
-
-        window.spawnBlade = function() {
-            const size = 64; const x = Math.random() * (width - size); const dir = Math.random() > 0.5 ? 1 : -1; const rotSpeed = dir * (0.1 + Math.random() * 0.5); 
-            blades.push({ x, y: -size - 20, size, vx: (Math.random() - 0.5) * 12, vy: 7.5, rot: Math.random() * 6.28, rotSpeed: rotSpeed, tagged: false, trail: [] });
-        }
-
-        window.handleJump = function() {
-            if (player.grounded) { playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; }
-            else if (jumpCount < 2) { playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; window.createParticles(player.x + 16, player.y + 16, '#fff', 5); }
-        }
+        window.createParticles = function(x, y, color, count) { for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color }); }
+        window.spawnBlade = function() { const size = 64; const x = Math.random() * (width - size); const dir = Math.random() > 0.5 ? 1 : -1; const rotSpeed = dir * (0.1 + Math.random() * 0.5); blades.push({ x, y: -size - 20, size, vx: (Math.random() - 0.5) * 12, vy: 7.5, rot: Math.random() * 6.28, rotSpeed: rotSpeed, tagged: false, trail: [] }); }
+        window.handleJump = function() { if (player.grounded) { playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; } else if (jumpCount < 2) { playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; window.createParticles(player.x + 16, player.y + 16, '#fff', 5); } }
 
         window.drawBackground = function(ctx, width, height, tick) {
             const bg = BACKGROUNDS[saveData.settings.bg] || BACKGROUNDS['default'];
@@ -694,20 +509,18 @@
         };
 
         // --- MANAGERS ---
-
         window.updateMenuUI = function() {
             document.getElementById('menu-coins').innerText = saveData.economy.coins;
-            renderRank('menu-rank-container', saveData.stats.highScore);
-            renderPfp();
+            renderRank('menu-rank-container', saveData.stats.highScore); renderPfp();
             document.getElementById('player-name-input').value = saveData.profile.name;
             document.getElementById('menu-rank-text').innerText = getRankData(saveData.stats.highScore).name;
             document.getElementById('hud-coins').innerText = saveData.economy.coins;
             document.getElementById('best-val').innerText = saveData.stats.highScore;
             document.getElementById('menu-gumball-btn').innerText = `GUMBALL (${getGumballCost()}🟡)`;
-            document.getElementById('gumball-btn').innerText = `TURN  (${getGumballCost()}🟡)`;
+            document.getElementById('gumball-btn').innerText = `TURN (${getGumballCost()}🟡)`;
             document.getElementById('menu-wheel-btn').innerText = `SPIN WHEEL (${getWheelCost()}🟡)`;
             document.getElementById('wheel-spin-btn').innerText = `SPIN (${getWheelCost()}🟡)`;
-            if(GOOGLE_SCRIPT_URL) document.getElementById('connection-status').innerText = "ONLINE (Sheets)";
+            document.getElementById('connection-status').innerText = GOOGLE_SCRIPT_URL ? "ONLINE (Sheets)" : "LOCAL MODE";
         }
 
         window.showMainMenu = function() { currentState = GAME_STATE.MENU; document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('menu').classList.remove('hidden'); window.updateMenuUI(); };
@@ -720,6 +533,10 @@
         window.startGame = function() {
             playSound('click'); if (audioCtx.state === 'suspended') audioCtx.resume();
             currentState = GAME_STATE.PLAYING; score = 0; gameTime = 100; blades = []; items = []; particles = []; floatingTexts = []; spawnTimer = 0; spawnRate = 45; player.trail = []; player.x = width/2 - 16; player.y = groundY - 32; earnedCoins = 0;
+            
+            // Story progression trackers
+            window.bladesJumpedThisRun = 0; window.activeCosmeticEvent = 0; window.cosmeticEventTimer = 0;
+            
             document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('ui-layer').classList.remove('hidden'); document.getElementById('time-container').classList.remove('hidden');
             window.updateMenuUI();
         }
@@ -750,6 +567,36 @@
             });
         }
 
+        // --- EPIC STORY EVENT MANAGER ---
+        window.triggerRandomEvent = function() {
+            let phase = 1;
+            if (window.bladesJumpedThisRun >= 30) phase = 2;
+            if (window.bladesJumpedThisRun >= 60) phase = 3;
+
+            let eventId;
+            if (phase === 1) eventId = Math.floor(Math.random() * 6) + 1; // 1 to 6
+            else if (phase === 2) eventId = Math.floor(Math.random() * 7) + 7; // 7 to 13
+            else eventId = Math.floor(Math.random() * 7) + 14; // 14 to 20
+
+            window.activeCosmeticEvent = eventId;
+            window.cosmeticEventTimer = 240; // ~4 seconds
+            playSound('jump');
+
+            const eventLore = {
+                1: "ANOMALY DETECTED", 2: "SYSTEM SCAN INITIATED", 3: "REALITY FLUX",
+                4: "GHOST PROTOCOL", 5: "PHANTOM DATA LEAK", 6: "OPTICS FLICKER",
+                7: "WARNING: CORRUPTION", 8: "BLOOD MOON PROTOCOL", 9: "THERMAL IMAGING",
+                10: "SHADOW ENTITIES RISING", 11: "MATRIX SHATTERING", 12: "OPTICS COMPROMISED",
+                13: "VOID ENERGY SPIKE", 14: "THE CORE IS MELTING", 15: "SYSTEM BREACH CRITICAL",
+                16: "ABYSSAL GAZE", 17: "DIMENSIONS COLLIDING", 18: "ASSIMILATION IMMINENT",
+                19: "LIGHTS OUT PROTOCOL", 20: "SINGULARITY REACHED"
+            };
+
+            floatingTexts.push({ text: eventLore[eventId], x: width/2, y: height/3, color: phase === 3 ? '#ef4444' : (phase === 2 ? '#fbbf24' : '#4ade80'), life: 3.0, vy: -0.5 });
+            if(eventId === 3 || eventId === 15) particles.push({x:0, y:0, w:width, h:height, life:1.0, type:'screen_flash', color:'rgba(255, 255, 255, 0.9)'});
+            else if (eventId === 7 || eventId === 11) for(let i=0; i<30; i++) window.createParticles(Math.random()*width, Math.random()*height, '#10b981', 1);
+        };
+
         // --- LOOP ---
         window.loop = function() {
             requestAnimationFrame(window.loop);
@@ -759,6 +606,8 @@
             if (currentState === GAME_STATE.WHEEL) { window.updateAndDrawWheel(); return; }
             if (currentState === GAME_STATE.PLAYING) {
                 globalTick++; gameTime -= 0.07; if (gameTime <= 0) window.endGame(); document.getElementById('time-fill').style.width = Math.max(0, gameTime) + "%";
+                
+                // PHYSICS RETAINED EXACTLY AS ORIGINAL
                 if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed; else if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed; else player.vx *= 0.75; 
                 player.vy += player.gravity; player.x += player.vx; player.y += player.vy;
                 const hue = (globalTick * 5) % 360; player.trail.unshift({x: player.x, y: player.y, a: player.angle, color: `hsl(${hue}, 80%, 60%)`}); if(player.trail.length > 8) player.trail.pop();
@@ -768,6 +617,12 @@
                     let taggedIndices = []; for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) taggedIndices.push(i); }
                     if (taggedIndices.length > 0) {
                         let multiplier = taggedIndices.length > 1 ? 2 : 1; 
+
+                        // STORY PROGRESSION LOGIC (Only fires visual effects, no physics changes)
+                        let previousJumps = Math.floor(window.bladesJumpedThisRun / 10);
+                        window.bladesJumpedThisRun += taggedIndices.length;
+                        if (Math.floor(window.bladesJumpedThisRun / 10) > previousJumps) window.triggerRandomEvent();
+
                         if (taggedIndices.length >= 4) { score *= 2; playSound('coin'); floatingTexts.push({text: "TOTAL SCORE x2!!!", x: width/2, y: height/2, color: '#ef4444', life: 2.0, vy: -1}); particles.push({x:0,y:0,w:width,h:height,life:0.5,type:'screen_flash', color:'rgba(255, 255, 255, 0.8)'}); } 
                         else if (taggedIndices.length > 1) { floatingTexts.push({text: taggedIndices.length + "x COMBO!", x: player.x, y: player.y-20, color: '#fbbf24', life: 1.0, vy: -1.5}); }
                         for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) { const b = blades[i]; window.createParticles(b.x + b.size/2, b.y + b.size/2, '#4ade80', 10); items.push({ x: b.x + b.size/2, y: b.y + b.size/2, vx: (Math.random()-0.5)*10, vy: -7, pulse: 0 }); blades.splice(i, 1); score += multiplier; } }
@@ -795,6 +650,7 @@
             const tileSize = 40; for(let row=0; row < (height-groundY)/tileSize + 1; row++) { for(let col=0; col < width/tileSize + 1; col++) { ctx.fillStyle = (row + col) % 2 === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.2)'; ctx.fillRect(col * tileSize, groundY + row * tileSize, tileSize, tileSize); } }
             ctx.fillStyle = '#fff'; ctx.fillRect(0, groundY, width, 4);
             particles.forEach(p => { if(p.type === 'flash') { ctx.fillStyle = `rgba(74, 222, 128, ${p.life * 0.4})`; ctx.fillRect(0, groundY, width, height-groundY); } else if (p.type === 'screen_flash') { ctx.fillStyle = p.color; ctx.fillRect(0, 0, width, height); } });
+            
             if(currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.GAMEOVER) {
                 blades.forEach(b => { ctx.save(); if(b.trail.length > 0) { b.trail.forEach((t, i) => { ctx.globalAlpha = 0.2 * (1 - i/b.trail.length); ctx.translate(t.x + 32, t.y + 32); ctx.rotate(t.rot); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 32, 0, Math.PI*2); ctx.fill(); ctx.rotate(-t.rot); ctx.translate(-(t.x + 32), -(t.y + 32)); }); } ctx.globalAlpha = 1.0; ctx.translate(b.x + 32, b.y + 32); ctx.rotate(b.rot); const isTagged = b.tagged; ctx.fillStyle = isTagged ? '#22c55e' : '#94a3b8'; ctx.beginPath(); for(let i=0; i<12; i++) { let r = i % 2 === 0 ? 32 : 21; let a = (i/12) * Math.PI * 2; ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r); } ctx.closePath(); ctx.fill(); ctx.fillStyle = isTagged ? '#86efac' : '#cbd5e1'; ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#475569'; ctx.fillRect(-5, -5, 10, 10); ctx.strokeStyle = isTagged ? '#14532d' : '#ef4444'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.stroke(); ctx.restore(); });
                 player.trail.forEach((t, i) => { ctx.globalAlpha = (1 - i/8) * 0.5; ctx.fillStyle = t.color; ctx.save(); ctx.translate(t.x + 16, t.y + 16); ctx.rotate(t.a); ctx.fillRect(-14, -14, 28, 28); ctx.restore(); }); ctx.globalAlpha = 1.0;
@@ -802,6 +658,29 @@
                 items.forEach(it => { ctx.fillStyle = '#fbbf24'; const s = 12 + Math.sin(it.pulse) * 4; ctx.shadowBlur = 10; ctx.shadowColor = '#fbbf24'; ctx.fillRect(it.x-s/2, it.y-s/2, s, s); ctx.shadowBlur = 0; ctx.fillStyle = '#fff'; ctx.fillRect(it.x-2, it.y-2, 4, 4); });
                 particles.forEach(p => { if(p.type !== 'flash' && p.type !== 'screen_flash') { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); } }); ctx.globalAlpha = 1;
                 floatingTexts.forEach(ft => { ctx.globalAlpha = ft.life; ctx.fillStyle = ft.color; ctx.shadowColor = '#000'; ctx.shadowBlur = 4; ctx.font = '20px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText(ft.text, ft.x, ft.y); ctx.shadowBlur = 0; }); ctx.globalAlpha = 1;
+            }
+
+            // --- VISUAL RENDERING FOR STORY EVENTS ---
+            if (window.cosmeticEventTimer > 0 && currentState === GAME_STATE.PLAYING) {
+                window.cosmeticEventTimer--;
+                ctx.save();
+                switch(window.activeCosmeticEvent) {
+                    case 1: ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'; ctx.fillRect(0,0,width,height); break; 
+                    case 2: ctx.strokeStyle = 'rgba(0, 255, 0, 0.2)'; ctx.lineWidth = 2; for(let i=0; i<height; i+=40) { ctx.beginPath(); ctx.moveTo(0, i+(globalTick%40)); ctx.lineTo(width, i+(globalTick%40)); ctx.stroke(); } break;
+                    case 5: ctx.fillStyle = 'rgba(0, 255, 255, 0.1)'; ctx.font = '20px monospace'; for(let i=0; i<5; i++) ctx.fillText(Math.random().toString(36).substring(2,8), Math.random()*width, Math.random()*height); break; 
+                    case 8: ctx.fillStyle = 'rgba(150, 0, 0, 0.3)'; ctx.fillRect(0,0,width,height); ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(width/2, height/2, 100, 0, Math.PI*2); ctx.fill(); break; 
+                    case 9: ctx.filter = 'invert(100%) hue-rotate(180deg)'; ctx.drawImage(canvas, 0, 0); break;
+                    case 10: ctx.filter = 'grayscale(100%)'; ctx.drawImage(canvas, 0, 0); break; 
+                    case 11: ctx.filter = 'hue-rotate(180deg)'; ctx.drawImage(canvas, 0, 0); break; 
+                    case 12: ctx.filter = 'blur(3px)'; ctx.drawImage(canvas, 0, 0); break; 
+                    case 14: ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.4 + Math.sin(globalTick*0.2)*0.2; ctx.fillRect(0, groundY, width, height-groundY); break; 
+                    case 16: ctx.globalAlpha = 0.1; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(width/2, height/2, 200 + Math.sin(globalTick*0.1)*50, 0, Math.PI*2); ctx.fill(); break; 
+                    case 17: ctx.filter = `hue-rotate(${(globalTick*10)%360}deg)`; ctx.drawImage(canvas, 0, 0); break; 
+                    case 18: ctx.filter = 'invert(100%)'; ctx.drawImage(canvas, 0, 0); break; 
+                    case 19: ctx.fillStyle = 'rgba(0,0,0,0.95)'; ctx.fillRect(0,0,width,height); ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.arc(player.x+16, player.y+16, 150, 0, Math.PI*2); ctx.fill(); break; 
+                    case 20: ctx.filter = 'contrast(400%) grayscale(100%)'; ctx.drawImage(canvas, 0, 0); break; 
+                }
+                ctx.restore();
             }
         }
 
