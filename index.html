@@ -158,14 +158,14 @@
 
     <div id="changelog-modal" class="overlay hidden">
         <div class="modal-container">
-            <h2 class="text-2xl text-green-400 mb-6">PATCH NOTES v1.4</h2>
+            <h2 class="text-2xl text-green-400 mb-6">PATCH NOTES v1.5</h2>
             <div style="text-align: left; font-family: monospace; color: #ccc; font-size: 0.8rem; line-height: 1.5;">
-                <p class="text-white mb-2">> BUG FIXES</p>
+                <p class="text-white mb-2">> BUG FIXES & ADDITIONS</p>
                 <ul class="list-disc pl-5 mb-4">
-                    <li>Fixed missing characters & sawblades during gameplay.</li>
-                    <li>Fixed Leaderboard crashes.</li>
-                    <li>Restored "Load Data" functionality.</li>
-                    <li>Wipe Save functionality fully operational.</li>
+                    <li>Gumball and Spin Wheel fully operational.</li>
+                    <li>Wipe Local Data is now completely functioning.</li>
+                    <li>Characters now occasionally do flips!</li>
+                    <li>Sawblades turn completely neon green when tagged.</li>
                 </ul>
             </div>
             <button class="arcade-btn mt-4" onclick="window.showMainMenu()">CLOSE</button>
@@ -193,7 +193,7 @@
         </div>
     </div>
     <div id="prize-reveal" class="overlay hidden">
-        <div class="skin-menu-container" style="max-width: 400px;">
+        <div class="skin-menu-container" style="max-width: 400px; z-index: 100;">
             <h2 class="text-yellow-400 mb-6 text-xl">UNLOCKED!</h2>
             <div style="width: 96px; height: 96px; margin: 0 auto 20px; background: #202028; border: 4px solid #fff; display: flex; align-items: center; justify-content: center;">
                 <canvas id="prizeCanvas" width="32" height="32" style="width: 96px; height: 96px; image-rendering: pixelated;"></canvas>
@@ -261,10 +261,11 @@
         let jumpCount = 0, globalTick = 0;
         let earnedCoins = 0;
 
-        const player = { x: 0, y: 0, w: 32, h: 32, vx: 0, vy: 0, speed: 7.0, jump: -15, gravity: 0.6, grounded: false, angle: 0, trail: [] };
+        // Note the added angle and targetAngle properties for flips
+        const player = { x: 0, y: 0, w: 32, h: 32, vx: 0, vy: 0, speed: 7.0, jump: -15, gravity: 0.6, grounded: false, angle: 0, targetAngle: 0, trail: [] };
         let blades = []; let particles = []; let items = []; let floatingTexts = []; const stars = [];
-        let gumball = { state: 'idle', timer: 0, knobAngle: 0, balls: [], droppedBall: null };
-        let wheel = { angle: 0, velocity: 0, state: 'idle', result: null };
+        let gumball = { state: 'idle', timer: 0, knobAngle: 0, ballColors: ['#ef4444', '#3b82f6', '#22c55e', '#fbbf24', '#a855f7'] };
+        let wheel = { angle: 0, velocity: 0, state: 'idle' };
         const keys = {};
 
         // Music Loop
@@ -302,10 +303,8 @@
         let unlockedBGs = Object.keys(BACKGROUNDS);
 
         // --- 4. CLOUD & SAVE ---
-
         function saveGame() {
             localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-            // Cloud Sync
             if (GOOGLE_SCRIPT_URL) {
                 const payload = { action: "saveData", userId: saveData.profile.name, data: saveData };
                 fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
@@ -321,19 +320,15 @@
             .then(res => res.json())
             .then(data => {
                 if(data && data.success) {
-                    saveData = data.data;
-                    saveGame(); // Save locally
-                    window.updateMenuUI();
+                    saveData = data.data; saveGame(); window.updateMenuUI();
                     alert("Data Loaded for " + name);
                 } else {
                     alert("No save found for " + name + ". Starting fresh.");
-                    saveData.profile.name = name;
-                    window.updateMenuUI();
+                    saveData.profile.name = name; window.updateMenuUI();
                 }
                 document.getElementById('connection-status').innerText = "ONLINE";
             })
             .catch(e => {
-                console.log(e);
                 alert("Could not load data. Check internet.");
                 document.getElementById('connection-status').innerText = "ERROR";
             });
@@ -347,8 +342,7 @@
         }
 
         window.fetchLeaderboardCloud = function() {
-            const list = document.getElementById('leaderboard-list');
-            list.innerHTML = 'Loading...';
+            const list = document.getElementById('leaderboard-list'); list.innerHTML = 'Loading...';
             if (!GOOGLE_SCRIPT_URL) { list.innerHTML = `<div class="text-gray-500">Offline Mode</div>`; return; }
 
             fetch(GOOGLE_SCRIPT_URL + "?action=getLeaderboard")
@@ -356,8 +350,7 @@
             .then(data => {
                 list.innerHTML = '';
                 data.slice(0,50).forEach((s, i) => {
-                    const div = document.createElement('div');
-                    div.className = `leaderboard-row ${i===0 ? 'gold' : ''}`;
+                    const div = document.createElement('div'); div.className = `leaderboard-row ${i===0 ? 'gold' : ''}`;
                     div.innerHTML = `<span>#${i+1} ${s.name.substring(0,10)}</span><span>${s.score} <span style="font-size:0.6rem; color:#888;">${s.rank}</span></span>`;
                     list.appendChild(div);
                 });
@@ -366,7 +359,6 @@
         }
 
         // --- CORE ---
-
         function getRankData(score) { for (let i = RANKS.length - 1; i >= 0; i--) if (score >= RANKS[i].min) return RANKS[i]; return RANKS[0]; }
         function getGumballCost() { return 5 + Math.floor(saveData.economy.gumballCount / 2) * 5; }
         function getWheelCost() { return 5 + Math.floor(saveData.economy.wheelCount / 2) * 5; }
@@ -374,20 +366,183 @@
         function renderPfp() { menuPfpCtx.clearRect(0,0,32,32); window.drawSkin(menuPfpCtx, 0, 0, 32, saveData.profile.skin, 0); }
         
         window.updateName = function(val) { saveData.profile.name = val.toUpperCase(); saveGame(); }
-        window.editProfile = function() { document.getElementById('player-name-input').focus(); }
         
         // FIXED WIPE SAVE FUNCTION
         window.wipeSave = function() { 
             if(confirm("Are you sure you want to completely wipe your local data? This cannot be undone.")) { 
-                localStorage.clear(); 
-                location.reload(); 
+                localStorage.removeItem(SAVE_KEY); // Explicitly remove key
+                saveData = JSON.parse(JSON.stringify(DEFAULT_SAVE)); // Reset
+                location.reload(); // Reload
             } 
+        }
+
+        // --- MINIGAME LOGIC (GUMBALL & WHEEL) ---
+        window.rollPrize = function(pool, unlockedList) {
+            let available = Object.keys(pool).filter(k => !unlockedList.includes(k));
+            if(available.length === 0) return { id: 'coins', name: '50 COINS', rarity: 'common', type: 'currency' };
+            let totalWeight = available.reduce((sum, k) => sum + (RARITY[pool[k].rarity.toUpperCase()].weight || 10), 0);
+            let r = Math.random() * totalWeight;
+            for(let k of available) {
+                let w = RARITY[pool[k].rarity.toUpperCase()].weight || 10;
+                if(r < w) return { id: k, ...pool[k] };
+                r -= w;
+            }
+            return { id: available[0], ...pool[available[0]] };
+        };
+
+        window.startGumball = function() {
+            if(saveData.economy.coins < getGumballCost()) { alert("NOT ENOUGH COINS!"); return; }
+            currentState = GAME_STATE.GUMBALL;
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+            document.getElementById('gumball-ui').classList.remove('hidden');
+            gumball.state = 'idle'; gumball.knobAngle = 0; gumball.timer = 0;
+        }
+
+        window.turnKnob = function() {
+            if(gumball.state !== 'idle') return;
+            let cost = getGumballCost();
+            if(saveData.economy.coins < cost) return;
+            saveData.economy.coins -= cost; saveData.economy.gumballCount++;
+            saveGame(); window.updateMenuUI();
+            gumball.state = 'turning'; playSound('click');
+        }
+
+        window.updateAndDrawGumball = function() {
+            ctx.fillStyle = '#111'; ctx.fillRect(0,0,width,height);
+            const cx = width/2; const cy = height/2;
+            
+            // Draw Machine Background
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(cx - 50, cy, 100, 120);
+            ctx.fillStyle = '#b91c1c'; ctx.fillRect(cx - 50, cy + 100, 100, 20); // base
+            
+            // Draw Globe
+            ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(cx, cy - 20, 70, 0, Math.PI*2); ctx.fill();
+            
+            // Draw internal gumballs
+            for(let i=0; i<15; i++) {
+                ctx.fillStyle = gumball.ballColors[i % gumball.ballColors.length];
+                ctx.beginPath(); ctx.arc(cx - 40 + (i*17)%80, cy - 50 + (i*13)%60, 12, 0, Math.PI*2); ctx.fill();
+            }
+            
+            // Draw Glass highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.arc(cx - 20, cy - 40, 30, 0, Math.PI*2); ctx.fill();
+
+            // Draw Knob
+            ctx.save();
+            ctx.translate(cx, cy + 40);
+            ctx.rotate(gumball.knobAngle);
+            ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#475569'; ctx.fillRect(-2, -15, 4, 30);
+            ctx.restore();
+
+            if(gumball.state === 'turning') {
+                gumball.knobAngle += 0.15;
+                if(gumball.knobAngle > Math.PI*2) { gumball.state = 'dropping'; gumball.knobAngle = 0; gumball.timer = 0; playSound('tick'); }
+            } else if(gumball.state === 'dropping') {
+                gumball.timer++;
+                // Dropped ball
+                ctx.fillStyle = gumball.ballColors[0];
+                ctx.beginPath(); ctx.arc(cx, cy + 80 + gumball.timer*2, 12, 0, Math.PI*2); ctx.fill();
+                if(gumball.timer > 20) {
+                    gumball.state = 'done';
+                    let prize = rollPrize(SKINS, saveData.inventory.skins);
+                    window.showPrize(prize, 'skin');
+                }
+            }
+        }
+
+        window.startWheel = function() {
+            if(saveData.economy.coins < getWheelCost()) { alert("NOT ENOUGH COINS!"); return; }
+            currentState = GAME_STATE.WHEEL;
+            document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+            document.getElementById('wheel-ui').classList.remove('hidden');
+            wheel.state = 'idle'; wheel.angle = 0; wheel.velocity = 0;
+        }
+
+        window.spinWheel = function() {
+            if(wheel.state !== 'idle') return;
+            let cost = getWheelCost();
+            if(saveData.economy.coins < cost) return;
+            saveData.economy.coins -= cost; saveData.economy.wheelCount++;
+            saveGame(); window.updateMenuUI();
+            wheel.state = 'spinning'; wheel.velocity = 0.4 + Math.random() * 0.2; playSound('jump');
+        }
+
+        window.updateAndDrawWheel = function() {
+            ctx.fillStyle = '#111'; ctx.fillRect(0,0,width,height);
+            const cx = width/2; const cy = height/2;
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(wheel.angle);
+            // Draw Wheel segments
+            for(let i=0; i<8; i++) {
+                ctx.fillStyle = i % 2 === 0 ? '#fbbf24' : '#f59e0b';
+                ctx.beginPath();
+                ctx.moveTo(0,0); ctx.arc(0,0, 120, i * Math.PI/4, (i+1) * Math.PI/4);
+                ctx.fill();
+                ctx.fillStyle = '#000'; ctx.stroke();
+            }
+            ctx.restore();
+            
+            // Pointer
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath(); ctx.moveTo(cx, cy - 130); ctx.lineTo(cx - 15, cy - 150); ctx.lineTo(cx + 15, cy - 150); ctx.fill();
+
+            if(wheel.state === 'spinning') {
+                wheel.angle += wheel.velocity;
+                wheel.velocity *= 0.985; // Friction
+                if(wheel.velocity < 0.002) {
+                    wheel.state = 'done'; playSound('coin');
+                    let prize = rollPrize(BACKGROUNDS, saveData.inventory.bgs);
+                    window.showPrize(prize, 'bg');
+                }
+            }
+        }
+
+        window.showPrize = function(prize, type) {
+            document.getElementById('prize-reveal').classList.remove('hidden');
+            document.getElementById('gumball-ui').classList.add('hidden');
+            document.getElementById('wheel-ui').classList.add('hidden');
+            
+            document.getElementById('prize-name').innerText = prize.name;
+            const rarityEl = document.getElementById('prize-rarity');
+            rarityEl.innerText = prize.rarity;
+            rarityEl.style.color = RARITY[prize.rarity.toUpperCase()].color;
+            
+            prizeCtx.clearRect(0,0,32,32);
+            if(prize.id === 'coins') {
+                prizeCtx.fillStyle = '#fbbf24'; prizeCtx.beginPath(); prizeCtx.arc(16,16,10,0,Math.PI*2); prizeCtx.fill();
+                saveData.economy.coins += 50;
+            } else if(type === 'skin') {
+                window.drawSkin(prizeCtx, 0, 0, 32, prize.id, 0);
+                saveData.inventory.skins.push(prize.id);
+            } else {
+                prizeCtx.fillStyle = prize.color; prizeCtx.fillRect(0,0,32,32);
+                saveData.inventory.bgs.push(prize.id);
+            }
+            saveGame(); window.updateMenuUI();
+        }
+
+        window.closePrize = function() {
+            document.getElementById('prize-reveal').classList.add('hidden');
+            window.showMainMenu();
         }
 
         // --- DRAWING ---
         window.createParticles = function(x, y, color, count) { for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color }); }
         window.spawnBlade = function() { const size = 64; const x = Math.random() * (width - size); const dir = Math.random() > 0.5 ? 1 : -1; const rotSpeed = dir * (0.1 + Math.random() * 0.5); blades.push({ x, y: -size - 20, size, vx: (Math.random() - 0.5) * 12, vy: 7.5, rot: Math.random() * 6.28, rotSpeed: rotSpeed, tagged: false, trail: [] }); }
-        window.handleJump = function() { if (player.grounded) { playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; } else if (jumpCount < 2) { playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; window.createParticles(player.x + 16, player.y + 16, '#fff', 5); } }
+        
+        window.handleJump = function() { 
+            if (player.grounded) { 
+                playSound('jump'); player.vy = player.jump; jumpCount = 1; player.grounded = false; 
+                if(Math.random() < 0.3) player.targetAngle += Math.PI * 2; // 30% chance to flip
+            } else if (jumpCount < 2) { 
+                playSound('jump'); player.vy = player.jump * 0.9; jumpCount = 2; 
+                window.createParticles(player.x + 16, player.y + 16, '#fff', 5); 
+                if(Math.random() < 0.3) player.targetAngle += Math.PI * 2; // 30% chance to flip
+            } 
+        }
 
         window.drawBackground = function(ctx, width, height, tick) {
             const bg = BACKGROUNDS[saveData.settings.bg] || BACKGROUNDS['default'];
@@ -425,48 +580,54 @@
             ctx.restore();
         };
 
-        // NEWLY ADDED: The missing function that draws the active gameplay
         window.drawGame = function() {
             // Draw Ground
-            ctx.fillStyle = '#222';
-            ctx.fillRect(0, groundY, width, height - groundY);
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(0, groundY, width, 4);
+            ctx.fillStyle = '#222'; ctx.fillRect(0, groundY, width, height - groundY);
+            ctx.fillStyle = '#4ade80'; ctx.fillRect(0, groundY, width, 4);
 
             // Draw Player Trail
             player.trail.forEach((t, i) => {
                 ctx.globalAlpha = 1 - (i / player.trail.length);
                 ctx.fillStyle = t.color;
-                ctx.fillRect(t.x, t.y, player.w, player.h);
+                ctx.save();
+                ctx.translate(t.x + player.w/2, t.y + player.h/2);
+                ctx.rotate(t.angle);
+                ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
+                ctx.restore();
             });
             ctx.globalAlpha = 1.0;
 
             // Draw Items (Coins/Powerups)
             items.forEach(it => {
-                ctx.fillStyle = '#fbbf24';
-                ctx.beginPath();
-                ctx.arc(it.x, it.y, 8 + Math.sin(it.pulse)*2, 0, Math.PI*2);
-                ctx.fill();
+                ctx.fillStyle = '#fbbf24'; ctx.beginPath();
+                ctx.arc(it.x, it.y, 8 + Math.sin(it.pulse)*2, 0, Math.PI*2); ctx.fill();
             });
 
-            // Draw Player
-            window.drawSkin(ctx, player.x, player.y, player.w, saveData.profile.skin, globalTick);
+            // Draw Player with Rotation Interpolation
+            ctx.save();
+            ctx.translate(player.x + player.w/2, player.y + player.h/2);
+            ctx.rotate(player.angle);
+            window.drawSkin(ctx, -player.w/2, -player.h/2, player.w, saveData.profile.skin, globalTick);
+            ctx.restore();
 
             // Draw Blades
             blades.forEach(b => {
                 ctx.save();
                 ctx.translate(b.x + b.size/2, b.y + b.size/2);
                 ctx.rotate(b.rot);
-                ctx.fillStyle = '#94a3b8';
+                
+                // Neon Green fill if tagged, Grey if not
+                ctx.fillStyle = b.tagged ? '#4ade80' : '#94a3b8';
                 ctx.beginPath();
                 ctx.arc(0, 0, b.size/2, 0, Math.PI*2);
                 ctx.fill();
+                
                 ctx.strokeStyle = '#333';
                 ctx.lineWidth = 4;
                 ctx.stroke();
                 
                 // Saw Teeth
-                ctx.fillStyle = '#cbd5e1';
+                ctx.fillStyle = b.tagged ? '#bbf7d0' : '#cbd5e1';
                 for(let i=0; i<8; i++) {
                     ctx.rotate(Math.PI/4);
                     ctx.beginPath();
@@ -477,6 +638,7 @@
                 }
                 ctx.restore();
                 
+                // Outline Box if tagged
                 if (b.tagged) {
                     ctx.strokeStyle = '#4ade80';
                     ctx.lineWidth = 4;
@@ -507,18 +669,15 @@
                 ctx.globalAlpha = 1.0;
             });
 
-            // Score Tracker during gameplay
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 24px "Press Start 2P"';
-            ctx.textAlign = 'center';
+            // Score Tracker
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 24px "Press Start 2P"'; ctx.textAlign = 'center';
             ctx.fillText(score, width / 2, 60);
         }
 
         // --- MANAGERS ---
         window.updateMenuUI = function() {
             document.getElementById('menu-coins').innerText = saveData.economy.coins;
-            renderRank('menu-rank-container', saveData.stats.highScore);
-            renderPfp();
+            renderRank('menu-rank-container', saveData.stats.highScore); renderPfp();
             document.getElementById('player-name-input').value = saveData.profile.name;
             document.getElementById('menu-rank-text').innerText = getRankData(saveData.stats.highScore).name;
             document.getElementById('hud-coins').innerText = saveData.economy.coins;
@@ -538,7 +697,8 @@
         
         window.startGame = function() {
             playSound('click'); if (audioCtx.state === 'suspended') audioCtx.resume();
-            currentState = GAME_STATE.PLAYING; score = 0; gameTime = 100; blades = []; items = []; particles = []; floatingTexts = []; spawnTimer = 0; spawnRate = 45; player.trail = []; player.x = width/2 - 16; player.y = groundY - 32; earnedCoins = 0;
+            currentState = GAME_STATE.PLAYING; score = 0; gameTime = 100; blades = []; items = []; particles = []; floatingTexts = []; spawnTimer = 0; spawnRate = 45; 
+            player.trail = []; player.x = width/2 - 16; player.y = groundY - 32; player.angle = 0; player.targetAngle = 0; earnedCoins = 0;
             document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden')); document.getElementById('ui-layer').classList.remove('hidden'); document.getElementById('time-container').classList.remove('hidden');
             window.updateMenuUI();
         }
@@ -579,12 +739,24 @@
             if (currentState === GAME_STATE.WHEEL) { window.updateAndDrawWheel(); return; }
             if (currentState === GAME_STATE.PLAYING) {
                 globalTick++; gameTime -= 0.07; if (gameTime <= 0) window.endGame(); document.getElementById('time-fill').style.width = Math.max(0, gameTime) + "%";
+                
+                // Input and Physics
                 if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed; else if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed; else player.vx *= 0.75; 
                 player.vy += player.gravity; player.x += player.vx; player.y += player.vy;
-                const hue = (globalTick * 5) % 360; player.trail.unshift({x: player.x, y: player.y, a: player.angle, color: `hsl(${hue}, 80%, 60%)`}); if(player.trail.length > 8) player.trail.pop();
+                
+                // Flip Interpolation
+                if(player.angle < player.targetAngle) player.angle += 0.3;
+                if(player.angle > player.targetAngle) player.angle = player.targetAngle;
+
+                // Trail Update
+                const hue = (globalTick * 5) % 360; player.trail.unshift({x: player.x, y: player.y, angle: player.angle, color: `hsl(${hue}, 80%, 60%)`}); if(player.trail.length > 8) player.trail.pop();
+                
+                // Bounds Check
                 if (player.x < 0) player.x = 0; if (player.x > width - player.w) player.x = width - player.w;
                 if (player.y > groundY - player.h) {
                     player.y = groundY - player.h; player.vy = 0; player.grounded = true; jumpCount = 0;
+                    if(player.angle % (Math.PI*2) !== 0) player.angle = player.targetAngle = Math.round(player.angle / (Math.PI*2)) * (Math.PI*2); // snap flip
+                    
                     let taggedIndices = []; for (let i = blades.length - 1; i >= 0; i--) { if (blades[i].tagged) taggedIndices.push(i); }
                     if (taggedIndices.length > 0) {
                         let multiplier = taggedIndices.length > 1 ? 2 : 1; 
@@ -594,12 +766,18 @@
                         particles.push({x:0,y:groundY,w:width,h:5,life:0.5,type:'flash'});
                     }
                 }
+                
+                // Blade Spawning
                 spawnTimer++; if (spawnTimer > spawnRate) { window.spawnBlade(); spawnTimer = 0; spawnRate = Math.max(8, spawnRate - 0.08); }
+                
+                // Blade Logic
                 for (let i = blades.length - 1; i >= 0; i--) {
                     let b = blades[i]; b.x += b.vx; b.y += b.vy; b.rot += b.rotSpeed; if (b.x < 0) { b.x = 0; b.vx *= -1; } if (b.x > width - b.size) { b.x = width - b.size; b.vx *= -1; } if (b.y > groundY - b.size) { b.y = groundY - b.size; b.vy *= -0.5; }
                     if (Math.hypot((player.x + 16) - (b.x + 32), (player.y + 16) - (b.y + 32)) < 36) { window.endGame(); return; }
                     if (!b.tagged && (player.y + 32) < b.y + 40 && Math.abs((player.x + 16) - (b.x + 32)) < 55) { b.tagged = true; window.createParticles(b.x + 32, b.y, '#4ade80', 8); }
                 }
+                
+                // Items & Particles Logic
                 items.forEach((it, idx) => {
                     it.x += it.vx; it.y += it.vy; it.vy += 0.4; it.pulse += 0.2; if (it.y > groundY - 10) { it.y = groundY - 10; it.vy *= -0.5; it.vx *= 0.6; if(Math.abs(it.vx)<0.1)it.vx=0; }
                     if (Math.hypot((player.x + 16) - it.x, (player.y + 16) - it.y) < 45) { playSound('coin'); gameTime = Math.min(100, gameTime + 15); items.splice(idx, 1); window.createParticles(it.x, it.y, '#fbbf24', 8); }
@@ -618,8 +796,7 @@
             if(!saveData.inventory) saveData.inventory = { skins: ['default'], bgs: ['default'] };
             if(!saveData.economy) saveData.economy = { coins: 0, gumballCount: 0, wheelCount: 0 };
             
-            window.showMainMenu(); 
-            loop();
+            window.showMainMenu(); loop();
         }
         window.addEventListener('resize', () => { width = window.innerWidth; height = window.innerHeight; canvas.width = width; canvas.height = height; groundY = height - 50; });
         
@@ -628,19 +805,6 @@
         window.addEventListener('keyup', (e) => { keys[e.code] = false; });
         canvas.addEventListener('touchstart', (e) => { if (currentState === GAME_STATE.PLAYING) { handleJump(); const touchX = e.touches[0].clientX; if (touchX < width/2) { keys['ArrowLeft'] = true; keys['ArrowRight'] = false; } else { keys['ArrowRight'] = true; keys['ArrowLeft'] = false; } } });
         canvas.addEventListener('touchend', () => { keys['ArrowLeft'] = false; keys['ArrowRight'] = false; });
-
-        // Attach globals to window
-        window.showLeaderboard = showLeaderboard;
-        window.showChangelog = showChangelog;
-        window.showSettings = showSettings;
-        window.wipeSave = wipeSave;
-        
-        if(typeof turnKnob !== 'undefined') window.turnKnob = turnKnob;
-        if(typeof startGumball !== 'undefined') window.startGumball = startGumball;
-        if(typeof startWheel !== 'undefined') window.startWheel = startWheel;
-        if(typeof spinWheel !== 'undefined') window.spinWheel = spinWheel;
-        if(typeof closePrize !== 'undefined') window.closePrize = closePrize;
-
     </script>
 </body>
 </html>
