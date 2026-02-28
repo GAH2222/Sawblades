@@ -162,9 +162,10 @@
             <div style="text-align: left; font-family: monospace; color: #ccc; font-size: 0.8rem; line-height: 1.5;">
                 <p class="text-white mb-2">> BUG FIXES</p>
                 <ul class="list-disc pl-5 mb-4">
+                    <li>Fixed missing characters & sawblades during gameplay.</li>
                     <li>Fixed Leaderboard crashes.</li>
-                    <li>Fixed Gumball & Wheel buttons.</li>
                     <li>Restored "Load Data" functionality.</li>
+                    <li>Wipe Save functionality fully operational.</li>
                 </ul>
             </div>
             <button class="arcade-btn mt-4" onclick="window.showMainMenu()">CLOSE</button>
@@ -316,8 +317,6 @@
             const name = document.getElementById('player-name-input').value.toUpperCase();
             document.getElementById('connection-status').innerText = "LOADING...";
             
-            // Note: GET requests can't have a body, passing name via URL if supported by script, or rely on script returning all data and filtering (inefficient but works for small apps)
-            // Ideally, we'd use a different structure, but for this hack:
             fetch(GOOGLE_SCRIPT_URL + "?action=loadData&userId=" + name)
             .then(res => res.json())
             .then(data => {
@@ -376,7 +375,14 @@
         
         window.updateName = function(val) { saveData.profile.name = val.toUpperCase(); saveGame(); }
         window.editProfile = function() { document.getElementById('player-name-input').focus(); }
-        window.wipeSave = function() { if(confirm("Are you sure?")) { localStorage.removeItem(SAVE_KEY); location.reload(); } }
+        
+        // FIXED WIPE SAVE FUNCTION
+        window.wipeSave = function() { 
+            if(confirm("Are you sure you want to completely wipe your local data? This cannot be undone.")) { 
+                localStorage.clear(); 
+                location.reload(); 
+            } 
+        }
 
         // --- DRAWING ---
         window.createParticles = function(x, y, color, count) { for (let i = 0; i < count; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 1.0, size: Math.random() * 6 + 3, color }); }
@@ -418,6 +424,95 @@
             else { ctx.fillStyle = '#fff'; ctx.fillRect(4, 8, 8, 8); ctx.fillRect(20, 8, 8, 8); ctx.fillStyle = '#000'; ctx.fillRect(8, 10, 4, 4); ctx.fillRect(24, 10, 4, 4); }
             ctx.restore();
         };
+
+        // NEWLY ADDED: The missing function that draws the active gameplay
+        window.drawGame = function() {
+            // Draw Ground
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, groundY, width, height - groundY);
+            ctx.fillStyle = '#4ade80';
+            ctx.fillRect(0, groundY, width, 4);
+
+            // Draw Player Trail
+            player.trail.forEach((t, i) => {
+                ctx.globalAlpha = 1 - (i / player.trail.length);
+                ctx.fillStyle = t.color;
+                ctx.fillRect(t.x, t.y, player.w, player.h);
+            });
+            ctx.globalAlpha = 1.0;
+
+            // Draw Items (Coins/Powerups)
+            items.forEach(it => {
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.arc(it.x, it.y, 8 + Math.sin(it.pulse)*2, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            // Draw Player
+            window.drawSkin(ctx, player.x, player.y, player.w, saveData.profile.skin, globalTick);
+
+            // Draw Blades
+            blades.forEach(b => {
+                ctx.save();
+                ctx.translate(b.x + b.size/2, b.y + b.size/2);
+                ctx.rotate(b.rot);
+                ctx.fillStyle = '#94a3b8';
+                ctx.beginPath();
+                ctx.arc(0, 0, b.size/2, 0, Math.PI*2);
+                ctx.fill();
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                
+                // Saw Teeth
+                ctx.fillStyle = '#cbd5e1';
+                for(let i=0; i<8; i++) {
+                    ctx.rotate(Math.PI/4);
+                    ctx.beginPath();
+                    ctx.moveTo(b.size/2 - 2, -6);
+                    ctx.lineTo(b.size/2 + 8, 0);
+                    ctx.lineTo(b.size/2 - 2, 6);
+                    ctx.fill();
+                }
+                ctx.restore();
+                
+                if (b.tagged) {
+                    ctx.strokeStyle = '#4ade80';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(b.x, b.y, b.size, b.size);
+                }
+            });
+
+            // Draw Particles
+            particles.forEach(p => {
+                if (p.type === 'flash' || p.type === 'screen_flash') {
+                    ctx.fillStyle = p.color || `rgba(255, 255, 255, ${p.life})`;
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+                } else {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                    ctx.globalAlpha = 1.0;
+                }
+            });
+
+            // Draw Floating Texts
+            floatingTexts.forEach(ft => {
+                ctx.globalAlpha = ft.life;
+                ctx.fillStyle = ft.color;
+                ctx.font = '10px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.globalAlpha = 1.0;
+            });
+
+            // Score Tracker during gameplay
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 24px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.fillText(score, width / 2, 60);
+        }
 
         // --- MANAGERS ---
         window.updateMenuUI = function() {
@@ -512,7 +607,7 @@
                 for(let i=particles.length-1; i>=0; i--) { let p = particles[i]; if(p.type === 'flash') p.life -= 0.1; else { p.x += p.vx; p.y += p.vy; p.life -= 0.03; } if (p.life <= 0) particles.splice(i, 1); }
                 for(let i=floatingTexts.length-1; i>=0; i--) { let ft = floatingTexts[i]; ft.y += ft.vy; ft.life -= 0.02; if (ft.life <= 0) floatingTexts.splice(i, 1); }
             }
-            if (window.drawGame) window.drawGame(); // Fallback for your specific custom functions
+            if (window.drawGame) window.drawGame(); 
         }
 
         // --- 7. INITIALIZATION ---
@@ -540,7 +635,6 @@
         window.showSettings = showSettings;
         window.wipeSave = wipeSave;
         
-        // These rely on logic you might have elsewhere, but attached so they don't break if referenced in your HTML
         if(typeof turnKnob !== 'undefined') window.turnKnob = turnKnob;
         if(typeof startGumball !== 'undefined') window.startGumball = startGumball;
         if(typeof startWheel !== 'undefined') window.startWheel = startWheel;
